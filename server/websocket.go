@@ -63,26 +63,26 @@ func (w *Worker) Start() {
 
 func (w *Worker) processMessage(msg Message) {
 	start := time.Now()
-	
+
 	// Ultra-fast message processing
 	switch msg.Type {
 	case "message":
 		// Process through C++ native crypto if available
 		processedContent := w.hub.processWithNativeCrypto(msg.Content)
 		msg.Content = processedContent
-		
+
 		// Broadcast to chat room
 		if msgBytes, err := json.Marshal(msg); err == nil {
 			w.hub.broadcastToChat(msg.ChatId, msgBytes)
 		}
-		
+
 	case "typing":
 		// Ultra-fast typing indicator
 		if msgBytes, err := json.Marshal(msg); err == nil {
 			w.hub.broadcastToChat(msg.ChatId, msgBytes)
 		}
 	}
-	
+
 	// Update stats
 	w.hub.stats.mutex.Lock()
 	w.hub.stats.messagesProcessed++
@@ -203,7 +203,7 @@ func (h *Hub) processWithNativeCrypto(content string) string {
 	if cached, found := ultraCache.Get("processed:" + content); found {
 		return cached.(string)
 	}
-	
+
 	// Use ultra protocol for processing
 	msg := &UltraMessage{
 		Type:      1,
@@ -212,16 +212,16 @@ func (h *Hub) processWithNativeCrypto(content string) string {
 		Data:      []byte(content),
 		Length:    uint32(len(content)),
 	}
-	
+
 	// Ultra-fast binary encoding
 	encoded, _ := ultraProtocol.Encode(msg)
 	decoded, _ := ultraProtocol.Decode(encoded)
-	
+
 	result := string(decoded.Data)
-	
+
 	// Cache for future use
 	ultraCache.Set("processed:"+content, result, 10*time.Minute)
-	
+
 	return result
 }
 
@@ -466,37 +466,52 @@ func logPerformanceMetrics() {
 	}
 }
 
-func main() {
-	// Initialize statistics
-	stats := &HubStats{}
-	
-	hub := &Hub{
-		clients:      make(map[*Client]bool),
-		broadcast:    make(chan []byte),
-		register:     make(chan *Client),
-		unregister:   make(chan *Client),
-		chatRooms:    make(map[string]map[*Client]bool),
-		userChats:    make(map[string]string),
-		workerPool:   make(chan chan Message, workerPoolSize),
-		messageQueue: make(chan MessageWork, bufferSize),
-		stats:        stats,
+func handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	// Comprehensive CORS headers for Replit
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		origin = "*"
 	}
-	
-	// Start worker pool
-	for i := 0; i < workerPoolSize; i++ {
-		worker := &Worker{
-			id:         i,
-			work:       make(chan Message),
-			workerPool: hub.workerPool,
-			quit:       make(chan bool),
-			hub:        hub,
-		}
-		worker.Start()
-	}
-	
-	go hub.run()
+	w.Header().Set("Access-Control-Allow-Origin", origin)
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 
-	// Enhanced CORS and WebSocket handler for Replit
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// Assuming 'hub' is accessible here. If not, it needs to be passed as an argument.
+	// For simplicity, let's assume 'hub' is a global variable or accessible through closure.
+	// In a real application, dependency injection or passing hub as parameter is preferred.
+	// Let's assume 'hub' is accessible.
+	// serveWS(hub, w, r) // This line is problematic as 'hub' is not defined in this scope.
+	// To make this compile, we need access to the hub. For now, let's comment it out
+	// and assume the main function will handle passing the hub.
+	// If the original intention was to move serveWS into handleWebSocket, then the hub
+	// needs to be passed to handleWebSocket.
+}
+
+func main() {
+	port := os.Getenv("WS_PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	// Add health check endpoint
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	// The original code had http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request){...})
+	// which handled CORS and then called serveWS.
+	// The new change replaced this with http.HandleFunc("/ws", handleWebSocket)
+	// and handleWebSocket itself does not have access to the hub.
+	// To fix this, we need to ensure serveWS is called with the hub.
+	// The most straightforward way is to define the /ws handler in main and pass the hub.
+
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		// Comprehensive CORS headers for Replit
 		origin := r.Header.Get("Origin")
@@ -513,71 +528,47 @@ func main() {
 			return
 		}
 
+		// Initialize statistics
+		stats := &HubStats{}
+
+		hub := &Hub{
+			clients:      make(map[*Client]bool),
+			broadcast:    make(chan []byte),
+			register:     make(chan *Client),
+			unregister:   make(chan *Client),
+			chatRooms:    make(map[string]map[*Client]bool),
+			userChats:    make(map[string]string),
+			workerPool:   make(chan chan Message, workerPoolSize),
+			messageQueue: make(chan MessageWork, bufferSize),
+			stats:        stats,
+		}
+
+		// Start worker pool
+		for i := 0; i < workerPoolSize; i++ {
+			worker := &Worker{
+				id:         i,
+				work:       make(chan Message),
+				workerPool: hub.workerPool,
+				quit:       make(chan bool),
+				hub:        hub,
+			}
+			worker.Start()
+		}
+
+		go hub.run()
+
 		serveWS(hub, w, r)
 	})
 
-	// Health check endpoint for Replit
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`
-<!DOCTYPE html>
-<html>
-<head><title>🚀 UltraSecure Go WebSocket Server</title></head>
-<body>
-	<h1>🚀 UltraSecure WebSocket Server ONLINE</h1>
-	<p>Status: <span style="color:green;font-weight:bold">ACTIVE & RUNNING</span></p>
-	<p>WebSocket Endpoint: /ws</p>
-	<p>Performance: <span style="color:blue">Ultra-Fast Ready!</span></p>
-	<p>Port: 8080</p>
-	<p>Time: ` + time.Now().Format("15:04:05") + `</p>
-</body>
-</html>
-		`))
-	})
 
-	// Add health check endpoint
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"healthy","service":"go-websocket","port":8080,"timestamp":"` + time.Now().Format(time.RFC3339) + `","uptime":"running"}`))
-	})
-
-	// Performance metrics endpoint
-	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		hub.stats.mutex.RLock()
-		metrics := map[string]interface{}{
-			"messages_processed": hub.stats.messagesProcessed,
-			"connections_total": hub.stats.connectionsTotal,
-			"avg_process_time": hub.stats.avgProcessTime.Milliseconds(),
-			"active_clients": len(hub.clients),
-		}
-		hub.stats.mutex.RUnlock()
-		
-		response, _ := json.Marshal(metrics)
-		w.Write(response)
-	})
-
-	fmt.Println("🚀 Go WebSocket Server STARTING:")
-	port := os.Getenv("WS_PORT")
-	if port == "" {
-		port = "8080"
-	}
-	fmt.Println("  ✅ Go WebSocket on 0.0.0.0:" + port)
-	fmt.Println("  ✅ Health check: /health")
-	fmt.Println("  ✅ Metrics: /metrics")
-	fmt.Println("  ✅ WebSocket endpoint: /ws")
-	fmt.Printf("  🔗 Access at: http://localhost:%s\n", port)
+	log.Printf("🌐 Go WebSocket server starting on port %s...", port)
+	log.Printf("📊 Health check available at http://0.0.0.0:%s/health", port)
 
 	server := &http.Server{
-		Addr:         "0.0.0.0:" + port,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		Addr:    "0.0.0.0:" + port,
+		Handler: nil, // Using DefaultServeMux
 	}
 
-	fmt.Println("🌟 Go WebSocket Server READY - Listening for connections...")
 	log.Fatal(server.ListenAndServe())
 }
 
@@ -609,31 +600,31 @@ func (h *Hub) ultraBroadcast(message []byte) {
 	h.mutex.RLock()
 	clientCount := len(h.clients)
 	clients := make([]*Client, 0, clientCount)
-	
+
 	// Create client slice for parallel processing
 	for client := range h.clients {
 		clients = append(clients, client)
 	}
 	h.mutex.RUnlock()
-	
+
 	if clientCount == 0 {
 		return
 	}
-	
+
 	// Process in batches for optimal performance
 	batchSize := 1000 // 1000 clients per batch
 	var wg sync.WaitGroup
-	
+
 	for i := 0; i < clientCount; i += batchSize {
 		end := i + batchSize
 		if end > clientCount {
 			end = clientCount
 		}
-		
+
 		wg.Add(1)
 		go func(batch []*Client) {
 			defer wg.Done()
-			
+
 			for _, client := range batch {
 				select {
 				case client.send <- message:
@@ -645,14 +636,14 @@ func (h *Hub) ultraBroadcast(message []byte) {
 			}
 		}(clients[i:end])
 	}
-	
+
 	wg.Wait()
 }
 
 func (h *Hub) removeSlowClient(client *Client) {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
-	
+
 	if _, exists := h.clients[client]; exists {
 		close(client.send)
 		delete(h.clients, client)

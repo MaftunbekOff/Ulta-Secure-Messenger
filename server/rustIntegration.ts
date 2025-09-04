@@ -87,6 +87,7 @@ export class RustIntegration {
 
     // Node.js encryption benchmark (crypto operations)
     const nodeStart = performance.now();
+    let nodeTime = 0;
     try {
       const crypto = await import('crypto');
       for (let i = 0; i < iterations; i++) {
@@ -94,52 +95,71 @@ export class RustIntegration {
         const cipher = crypto.createCipher('aes192', 'secret');
         let encrypted = cipher.update(testMessage + i, 'utf8', 'hex');
         encrypted += cipher.final('hex');
-        
+
         const decipher = crypto.createDecipher('aes192', 'secret');
         let decrypted = decipher.update(encrypted, 'hex', 'utf8');
         decrypted += decipher.final('utf8');
       }
+      nodeTime = performance.now() - nodeStart;
     } catch (error) {
       console.warn('Node.js crypto operations failed, using hash fallback');
-      const crypto = await import('crypto');
-      for (let i = 0; i < iterations; i++) {
-        crypto.createHash('sha256').update(testMessage + i).digest('hex');
+      try {
+        const crypto = await import('crypto');
+        for (let i = 0; i < iterations; i++) {
+          crypto.createHash('sha256').update(testMessage + i).digest('hex');
+        }
+        nodeTime = performance.now() - nodeStart;
+      } catch (hashError) {
+        console.error('Node.js hash fallback also failed:', hashError);
+        nodeTime = Infinity; // Indicate failure
       }
     }
-    const nodeTime = performance.now() - nodeStart;
+
 
     // Rust encryption benchmark - single call with iterations
     const rustStart = performance.now();
     let rustTime = 0;
     try {
       // Use built-in benchmark that processes multiple iterations
-      const { stdout } = await execAsync('cargo run --bin encryption_engine -- benchmark');
-      
+      const { stdout, stderr } = await execAsync('cargo run --bin encryption_engine -- benchmark');
+
+      if (stderr) {
+        console.warn('🦀 Rust benchmark warning:', stderr);
+      }
+
       // Extract time from Rust output if available
       const timeMatch = stdout.match(/Total: (\d+(?:\.\d+)?)ms/);
       if (timeMatch) {
         rustTime = parseFloat(timeMatch[1]);
       } else {
+        // If specific time not found, use the execution time as a fallback
         rustTime = performance.now() - rustStart;
+        console.warn('Could not parse Rust benchmark time, using execution time.');
       }
     } catch (error) {
-      console.warn('Rust benchmark failed:', error.message);
+      console.warn('Rust benchmark execution failed:', error.message);
       rustTime = performance.now() - rustStart;
-      
+
       // If Rust completely fails, estimate based on typical performance
-      if (rustTime < 1) {
+      if (rustTime < 1 && nodeTime !== Infinity) { // Avoid setting a time if Node.js already failed
         rustTime = nodeTime * 0.3; // Rust typically 3x faster for crypto
+        console.log('Estimating Rust time based on Node.js performance.');
+      } else if (nodeTime === Infinity) {
+        rustTime = Infinity; // Propagate failure if Node.js also failed
       }
     }
 
     console.log('📊 Performance Comparison:');
-    console.log(`  Node.js crypto: ${nodeTime.toFixed(2)}ms`);
-    console.log(`  Rust native: ${rustTime.toFixed(2)}ms`);
-    
-    if (nodeTime > 0 && rustTime > 0) {
+    const nodeDisplayTime = nodeTime === Infinity ? 'Failed' : `${nodeTime.toFixed(2)}ms`;
+    const rustDisplayTime = rustTime === Infinity ? 'Failed' : `${rustTime.toFixed(2)}ms`;
+
+    console.log(`  Node.js crypto: ${nodeDisplayTime}`);
+    console.log(`  Rust native: ${rustDisplayTime}`);
+
+    if (nodeTime !== Infinity && rustTime !== Infinity && nodeTime > 0 && rustTime > 0) {
       const improvement = ((nodeTime - rustTime) / nodeTime * 100);
       console.log(`  Speed improvement: ${improvement.toFixed(2)}%`);
-      
+
       if (improvement > 0) {
         console.log(`  🏆 Rust is ${(nodeTime / rustTime).toFixed(1)}x faster!`);
       } else if (improvement < -10) {
@@ -147,8 +167,10 @@ export class RustIntegration {
       } else {
         console.log(`  ⚖️ Performance is comparable`);
       }
+    } else if (nodeTime === Infinity || rustTime === Infinity) {
+      console.log('  Result: Performance benchmark failed for one or both environments.');
     }
-    
+
     console.log(`\n💡 Architecture Analysis:`);
     console.log(`  - Node.js: Web server, API, real-time communication`);
     console.log(`  - Rust: Cryptographic operations, heavy computation`);

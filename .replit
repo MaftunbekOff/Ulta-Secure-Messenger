@@ -570,5 +570,26 @@ args = "export WS_PORT=8080"
 task = "shell.exec"
 args = "go run server/websocket.go"
 
+[[workflows.workflow]]
+name = "Start WebSocket Server"
+author = 45696961
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🚀 Starting Go WebSocket Server...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go mod tidy"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "export WS_PORT=8080"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go run server/websocket.go"
+
 [agent]
 expertMode = true
