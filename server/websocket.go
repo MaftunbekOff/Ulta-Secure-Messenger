@@ -412,19 +412,34 @@ func logPerformanceMetrics() {
 }
 
 func main() {
-	hub := newHub()
-	go hub.run()
-
-	// Test Rust integration before starting
-	fmt.Println("🔍 Testing Rust integration...")
-	if testRustIntegration() {
-		fmt.Println("✅ Rust components working correctly")
-	} else {
-		fmt.Println("⚠️ Rust integration issues detected - continuing with reduced functionality")
+	// Initialize statistics
+	stats := &HubStats{}
+	
+	hub := &Hub{
+		clients:      make(map[*Client]bool),
+		broadcast:    make(chan []byte),
+		register:     make(chan *Client),
+		unregister:   make(chan *Client),
+		chatRooms:    make(map[string]map[*Client]bool),
+		userChats:    make(map[string]string),
+		workerPool:   make(chan chan Message, workerPoolSize),
+		messageQueue: make(chan MessageWork, bufferSize),
+		stats:        stats,
 	}
-
-	// Start Rust performance monitoring
-	go logPerformanceMetrics()
+	
+	// Start worker pool
+	for i := 0; i < workerPoolSize; i++ {
+		worker := &Worker{
+			id:         i,
+			work:       make(chan Message),
+			workerPool: hub.workerPool,
+			quit:       make(chan bool),
+			hub:        hub,
+		}
+		worker.Start()
+	}
+	
+	go hub.run()
 
 	// Enhanced CORS and WebSocket handler for Replit
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
@@ -453,12 +468,14 @@ func main() {
 		w.Write([]byte(`
 <!DOCTYPE html>
 <html>
-<head><title>UltraSecure WebSocket Server</title></head>
+<head><title>🚀 UltraSecure Go WebSocket Server</title></head>
 <body>
-	<h1>🚀 UltraSecure WebSocket Server</h1>
-	<p>Status: <span style="color:green">Active</span></p>
+	<h1>🚀 UltraSecure WebSocket Server ONLINE</h1>
+	<p>Status: <span style="color:green;font-weight:bold">ACTIVE & RUNNING</span></p>
 	<p>WebSocket Endpoint: /ws</p>
-	<p>Performance: Telegram-killer ready!</p>
+	<p>Performance: <span style="color:blue">Ultra-Fast Ready!</span></p>
+	<p>Port: 8080</p>
+	<p>Time: ` + time.Now().Format("15:04:05") + `</p>
 </body>
 </html>
 		`))
@@ -468,18 +485,35 @@ func main() {
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"healthy","service":"go-websocket","timestamp":"` + time.Now().Format(time.RFC3339) + `"}`))
+		w.Write([]byte(`{"status":"healthy","service":"go-websocket","port":8080,"timestamp":"` + time.Now().Format(time.RFC3339) + `","uptime":"running"}`))
 	})
 
-	fmt.Println("🚀 Polyglot Server starting:")
+	// Performance metrics endpoint
+	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		hub.stats.mutex.RLock()
+		metrics := map[string]interface{}{
+			"messages_processed": hub.stats.messagesProcessed,
+			"connections_total": hub.stats.connectionsTotal,
+			"avg_process_time": hub.stats.avgProcessTime.Milliseconds(),
+			"active_clients": len(hub.clients),
+		}
+		hub.stats.mutex.RUnlock()
+		
+		response, _ := json.Marshal(metrics)
+		w.Write(response)
+	})
+
+	fmt.Println("🚀 Go WebSocket Server STARTING:")
 	port := os.Getenv("WS_PORT")
 	if port == "" {
 		port = "8080"
 	}
-	fmt.Println("  - Go WebSocket on :" + port)
-	fmt.Println("  - Health check on :" + port + "/health")
-	fmt.Println("  - Rust Message Processor integrated")
-	fmt.Println("  - Node.js API on :5000")
+	fmt.Println("  ✅ Go WebSocket on 0.0.0.0:" + port)
+	fmt.Println("  ✅ Health check: /health")
+	fmt.Println("  ✅ Metrics: /metrics")
+	fmt.Println("  ✅ WebSocket endpoint: /ws")
+	fmt.Printf("  🔗 Access at: http://localhost:%s\n", port)
 
 	server := &http.Server{
 		Addr:         "0.0.0.0:" + port,
@@ -488,6 +522,7 @@ func main() {
 		IdleTimeout:  120 * time.Second,
 	}
 
+	fmt.Println("🌟 Go WebSocket Server READY - Listening for connections...")
 	log.Fatal(server.ListenAndServe())
 }
 

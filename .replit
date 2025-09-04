@@ -498,23 +498,48 @@ mode = "parallel"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "echo \"🚀 Starting Ultra Development Stack...\""
+args = "echo \"🌐 Starting Go WebSocket server on port 8080...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "echo \"🌐 Starting Go WebSocket server...\""
+args = "export WS_PORT=8080"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "WS_PORT=8080 go run server/websocket.go &"
+args = "go run server/websocket.go &"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "echo \"⚡ Starting Node.js development server...\""
+args = "sleep 2"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"⚡ Starting Node.js development server on port 5000...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Go WebSocket Only"
+author = 45696961
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🚀 Starting Go WebSocket Server...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd /home/runner/workspace"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "export WS_PORT=8080"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go run server/websocket.go"
 
 [agent]
 expertMode = true
