@@ -23,7 +23,7 @@ externalPort = 8080
 PORT = "5000"
 
 [workflows]
-runButton = "UltraSecure Fixed Stack"
+runButton = "UltraSecure Parallel Stack"
 
 [[workflows.workflow]]
 name = "Project"
@@ -44,42 +44,13 @@ args = "npm run dev"
 waitForPort = 5000
 
 [[workflows.workflow]]
-name = "UltraSecure Full Stack"
+name = "UltraSecure Parallel Stack"
 author = 45696961
 mode = "parallel"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"🚀 Starting UltraSecure Messenger Full Stack...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"⚡ Starting React frontend on port 5000...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev &"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "sleep 3"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"🌐 Starting Go WebSocket server on port 8080...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "export WS_PORT=8080"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "go run server/websocket.go"
-
-[[workflows.workflow]]
-name = "Frontend First Stack"
-author = 45696961
-mode = "parallel"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
@@ -87,44 +58,7 @@ args = "npm run dev"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "sleep 5"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "go run server/websocket.go"
-
-[[workflows.workflow]]
-name = "UltraSecure Fixed Stack"
-author = 45696961
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"🚀 Starting UltraSecure Messenger (Fixed)...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"🔧 Killing existing processes on port 5000...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "pkill -f \"tsx server/index.ts\" || echo \"No existing processes found\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "pkill -f \"npm run dev\" || echo \"No npm processes found\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "sleep 2"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"⚡ Starting React frontend on port 5000...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
+args = "echo \"🚀 Starting UltraSecure Messenger - Full Stack...\""
 
 [agent]
 expertMode = true
