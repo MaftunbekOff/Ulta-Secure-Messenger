@@ -20,7 +20,14 @@ import { eq, and, desc, count, sql, ne } from "drizzle-orm";
 import { users as usersTable, messages as messagesTable } from "@shared/schema";
 
 function generateId(): string {
-  return Math.random().toString(36).substr(2, 9);
+  // Generate 12-digit numeric ID in UUID format (for compatibility)
+  const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp  
+  const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0'); // 6 random digits
+  const numericId = timestamp + random; // 12 digits total
+  
+  // Format as UUID-like string to maintain database compatibility
+  // Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (first 12 chars are our numeric ID)
+  return `${numericId}-0000-0000-0000-000000000000`;
 }
 
 export interface IStorage {
