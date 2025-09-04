@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { rustIntegration } from './rustIntegration';
 
 // Set NODE_ENV if not already set
 if (!process.env.NODE_ENV) {
@@ -68,8 +69,28 @@ app.use((req, res, next) => {
   const port = parseInt(process.env.PORT || '5000', 10);
   const host = process.env.HOST || "0.0.0.0";
   server.listen(port, host, () => {
-    log(`serving on port ${port}`);
-    log(`[websocket] WebSocket server ready on ws://${host}:${port}/ws`);
-    log(`[websocket] Server host: ${host}, protocol: ${process.env.NODE_ENV === 'production' ? 'wss' : 'ws'}`);
+    log(`🚀 Server ishlamoqda: http://localhost:${PORT}`);
+
+  // Initialize Rust components
+  console.log('🦀 Rust komponentlarini ishga tushirish...');
+
+  // Rust health check
+  rustIntegration.healthCheck().then(isHealthy => {
+    if (isHealthy) {
+      console.log('✅ Rust komponentlari tayyor');
+
+      // Run performance benchmark
+      rustIntegration.benchmarkPerformance().catch(console.error);
+
+      // Get metrics
+      rustIntegration.getMetrics().then(metrics => {
+        if (metrics) {
+          console.log('📊 Rust metrics:', metrics);
+        }
+      });
+    } else {
+      console.warn('⚠️ Rust komponentlari ishlamayapti');
+    }
+  }).catch(console.error);
   });
 })();
