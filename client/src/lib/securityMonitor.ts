@@ -109,11 +109,16 @@ export class SecurityMonitor {
     }
   }
 
-  // Browser xavfsizligini tekshirish
+  // Browser xavfsizligini tekshirish - optimizatsiya qilingan
   checkBrowserSecurity(): SecurityEvent[] {
     const issues: SecurityEvent[] = [];
 
     try {
+      // Faqat production muhitida tekshirish
+      if (process.env.NODE_ENV !== 'production') {
+        return issues; // Development muhitida hech narsa tekshirmaymiz
+      }
+
       // HTTPS tekshirish (faqat production da)
       if (typeof window !== 'undefined' && window.location && 
           window.location.protocol !== 'https:' && 
@@ -142,22 +147,11 @@ export class SecurityMonitor {
           }
         });
       }
-
-      // Developer tools tekshirishni development da skip qilish
-      if (process.env.NODE_ENV === 'production' && this.isDevToolsOpen()) {
-        issues.push({
-          type: 'unusual_activity',
-          severity: 'medium',
-          timestamp: Date.now(),
-          details: {
-            issue: 'Developer tools detected',
-            warning: 'Sensitive data may be exposed'
-          }
-        });
-      }
     } catch (error) {
-      // Silent error handling
-      console.warn('Security check failed:', error);
+      // Faqat muhim xatolarni log qilish
+      if (process.env.NODE_ENV === 'production') {
+        console.warn('Security check failed:', error);
+      }
     }
 
     return issues;

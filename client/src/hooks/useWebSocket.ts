@@ -26,179 +26,94 @@ export function useWebSocket() {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const connectionAttemptRef = useRef<boolean>(false);
   const maxReconnectAttempts = 3;
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const onMessage = null; // This was not defined in the original snippet, keeping it null for now.
 
-  const connectWebSocket = useCallback(async () => {
-    if (connectionAttemptRef.current || !token) {
+  const connectWebSocket = useCallback(() => {
+    if (isConnecting || socket?.readyState === WebSocket.OPEN) {
       return;
     }
 
-    connectionAttemptRef.current = true;
+    setIsConnecting(true);
 
     try {
-      // Try HTTP fallback first for Replit environment
-      const wsUrl = `ws://${window.location.hostname}:8080/ws`;
-      console.log('Attempting WebSocket connection to:', wsUrl);
-      
+      // WebSocket URL ni to'g'ri hosil qilish
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.hostname;
+      const port = window.location.hostname.includes('replit') ? '' : ':8080';
+      const wsUrl = `${protocol}//${host}${port}/ws`;
+
+      // Silent connection attempts
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Attempting WebSocket connection to:', wsUrl);
+      }
+
       const ws = new WebSocket(wsUrl);
-      
-      // Shorter timeout for faster failure detection
-      const connectionTimeout = setTimeout(() => {
-        if (ws.readyState === WebSocket.CONNECTING) {
-          console.log('WebSocket connection timeout, using HTTP polling');
-          ws.close();
-          setIsConnected(true); // Simulate connection for UI
-        }
-      }, 3000); // 3 second timeout
 
       ws.onopen = () => {
-        clearTimeout(connectionTimeout);
-        connectionAttemptRef.current = false;
-        console.log('✅ WebSocket connected successfully');
-        setIsConnected(true);
-        setReconnectAttempts(0);
-
-        // Send authentication
-        try {
-          ws.send(JSON.stringify({ type: 'join_chat', token }));
-        } catch (sendError) {
-          console.warn('Failed to send auth message:', sendError);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ WebSocket ulanish muvaffaqiyatli');
         }
-      };
+        setIsConnected(true);
+        setIsConnecting(false);
+        setError(null);
+        setReconnectAttempts(0); // Reset attempts on successful connection
 
-      ws.onclose = (event) => {
-        clearTimeout(connectionTimeout);
-        connectionAttemptRef.current = false;
-        console.log('WebSocket disconnected, using HTTP polling');
-        setIsConnected(true); // Keep UI connected using HTTP polling
-
-        // Don't auto-reconnect, use HTTP polling instead
-      };
-
-      ws.onerror = (error) => {
-        console.log('WebSocket error, falling back to HTTP polling');
-        setIsConnected(true); // Fallback to HTTP polling
+        // Authentication tokenini yuborish
+        const token = localStorage.getItem('authToken');
+        if (token) {
+          ws.send(JSON.stringify({ type: 'auth', token }));
+        }
       };
 
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('WebSocket message received:', data);
-
-          // Cache incoming messages immediately
-          if (data.type === 'message' && data.chatId && data.messageId) {
-            const cacheKey = `msg_${data.chatId}_${data.messageId}`;
-            try {
-              sessionStorage.setItem(cacheKey, JSON.stringify({
-                content: data.content,
-                timestamp: Date.now(),
-                senderId: data.senderId
-              }));
-            } catch (e) {
-              // Silent storage error handling
-            }
+          onMessage?.(data);
+        } catch (error) {
+          if (process.env.NODE_ENV === 'development') {
+            console.error('WebSocket message parsing error:', error);
           }
-
-        } catch (parseError) {
-          console.warn('Failed to parse WebSocket message:', parseError);
-        }
-      };
-
-      setSocket(ws);
-
-    } catch (error) {
-      connectionAttemptRef.current = false;
-      console.log('WebSocket failed, using HTTP polling:', error);
-      setIsConnected(true); // Fallback to HTTP polling
-    }
-    
-    /*
-    try {
-      // Longer timeout for Replit environment
-      const connectionTimeout = setTimeout(() => {
-        if (ws.readyState === WebSocket.CONNECTING) {
-          ws.close();
-        }
-      }, 10000); // 10 second timeout for better stability
-
-      ws.onopen = () => {
-        clearTimeout(connectionTimeout);
-        connectionAttemptRef.current = false;
-        console.log('✅ WebSocket connected');
-        setIsConnected(true);
-        setReconnectAttempts(0);
-
-        // Send authentication
-        try {
-          ws.send(JSON.stringify({ type: 'join_chat', token }));
-        } catch (sendError) {
-          // Silent handling
         }
       };
 
       ws.onclose = (event) => {
-        clearTimeout(connectionTimeout);
-        connectionAttemptRef.current = false;
         setIsConnected(false);
+        setIsConnecting(false);
 
-        // Only auto-reconnect for unexpected closes
-        if (event.code !== 1000 && event.code !== 1001 && reconnectAttempts < maxReconnectAttempts) {
-          const timeout = Math.min(2000 + (reconnectAttempts * 1000), 10000);
+        // Faqat development muhitida log qilish
+        if (process.env.NODE_ENV === 'development') {
+          console.log('WebSocket ulanish yopildi:', event.code, event.reason);
+        }
 
-          reconnectTimeoutRef.current = setTimeout(() => {
-            setReconnectAttempts(prev => prev + 1);
+        // Qayta ulanishga harakat qilish (faqat kutilmagan yopilishda)
+        if (!event.wasClean && reconnectAttempts < maxReconnectAttempts) {
+          const timeout = Math.min(Math.pow(2, reconnectAttempts) * 1000, 30000); // Max 30s
+          setReconnectAttempts(prev => prev + 1);
+
+          setTimeout(() => {
             connectWebSocket();
           }, timeout);
+        } else if (reconnectAttempts >= maxReconnectAttempts) {
+          setError('HTTP polling rejimida ishlayabdi');
+          // HTTP polling rejimiga o'tish - console spam yo'q
         }
       };
 
-      ws.onerror = (error) => {
-        // Silent error handling to reduce console spam
-        setIsConnected(false);
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-
-          // Cache incoming messages immediately
-          if (data.type === 'message' && data.chatId && data.messageId) {
-            // Store in sessionStorage for persistence across refreshes
-            const cacheKey = `msg_${data.chatId}_${data.messageId}`;
-            try {
-              sessionStorage.setItem(cacheKey, JSON.stringify({
-                content: data.content,
-                timestamp: Date.now(),
-                senderId: data.senderId
-              }));
-            } catch (e) {
-              // Silent storage error handling
-            }
-          }
-
-          // Handle only important messages
-          if (data.type === 'error') {
-            setIsConnected(false);
-          }
-        } catch {
-          // Silent parsing error handling
-        }
+      ws.onerror = () => {
+        setError('WebSocket mavjud emas - HTTP rejimida');
+        setIsConnecting(false);
+        // Silent error handling - no console spam
       };
 
       setSocket(ws);
-
     } catch (error) {
-      connectionAttemptRef.current = false;
-
-      // Reduced retry logic
-      if (reconnectAttempts < maxReconnectAttempts) {
-        reconnectTimeoutRef.current = setTimeout(() => {
-          setReconnectAttempts(prev => prev + 1);
-          connectWebSocket();
-        }, 3000);
-      }
+      setError('HTTP polling rejimida ishlayabdi');
+      setIsConnecting(false);
+      // Silent error handling - no console spam
     }
-    */
-  }, [token, reconnectAttempts, socket]);
+  }, [isConnecting, socket, onMessage, reconnectAttempts, maxReconnectAttempts]);
 
   useEffect(() => {
     // Use HTTP polling instead of WebSocket for better stability

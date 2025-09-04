@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -6,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os" // Added os package for environment variable access
 	"sync"
 	"time"
 	"os/exec"
@@ -82,7 +82,7 @@ func (h *Hub) run() {
 				h.userChats[client.userId] = client.chatId
 			}
 			h.mutex.Unlock()
-			
+
 			select {
 			case client.send <- []byte(`{"type":"connected","userId":"` + client.userId + `"}`):
 			default:
@@ -95,7 +95,7 @@ func (h *Hub) run() {
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.send)
-				
+
 				if client.chatId != "" {
 					if chatClients, exists := h.chatRooms[client.chatId]; exists {
 						delete(chatClients, client)
@@ -127,7 +127,7 @@ func (h *Hub) broadcastToChat(chatId string, message []byte) {
 	h.mutex.RLock()
 	chatClients := h.chatRooms[chatId]
 	h.mutex.RUnlock()
-	
+
 	if chatClients != nil {
 		for client := range chatClients {
 			select {
@@ -196,7 +196,7 @@ func (c *Client) readPump() {
 			if c.chatId != "" && msg.Content != "" {
 				// Process message through Rust processor
 				processedContent := processMessageWithRust(msg.Content)
-				
+
 				newMsg := Message{
 					Type:      "message",
 					ChatId:    c.chatId,
@@ -300,7 +300,7 @@ func processMessageWithRust(content string) string {
 		log.Printf("Rust processing failed: %v", err)
 		return content // fallback to original content
 	}
-	
+
 	// Return processed content from Rust
 	return string(output)
 }
@@ -320,7 +320,7 @@ func logPerformanceMetrics() {
 func main() {
 	hub := newHub()
 	go hub.run()
-	
+
 	// Test Rust integration before starting
 	fmt.Println("🔍 Testing Rust integration...")
 	if testRustIntegration() {
@@ -328,7 +328,7 @@ func main() {
 	} else {
 		fmt.Println("⚠️ Rust integration issues detected - continuing with reduced functionality")
 	}
-	
+
 	// Start Rust performance monitoring
 	go logPerformanceMetrics()
 
@@ -338,12 +338,12 @@ func main() {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		
+
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		
+
 		serveWS(hub, w, r)
 	})
 
@@ -355,18 +355,22 @@ func main() {
 	})
 
 	fmt.Println("🚀 Polyglot Server starting:")
-	fmt.Println("  - Go WebSocket on :8080")
-	fmt.Println("  - Health check on :8080/health")
+	port := os.Getenv("WS_PORT")
+	if port == "" {
+		port = "8080"
+	}
+	fmt.Println("  - Go WebSocket on :" + port)
+	fmt.Println("  - Health check on :" + port + "/health")
 	fmt.Println("  - Rust Message Processor integrated")
 	fmt.Println("  - Node.js API on :5000")
-	
+
 	server := &http.Server{
-		Addr:         "0.0.0.0:8080",
+		Addr:         "0.0.0.0:" + port,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
-	
+
 	log.Fatal(server.ListenAndServe())
 }
 
