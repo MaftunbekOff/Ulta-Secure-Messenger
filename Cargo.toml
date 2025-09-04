@@ -8,6 +8,10 @@ edition = "2021"
 name = "encryption_engine"
 path = "server/main.rs"
 
+[[bin]]
+name = "message_processor" 
+path = "server/message_processor.rs"
+
 [dependencies]
 aes-gcm = "0.10"
 rsa = "0.9"

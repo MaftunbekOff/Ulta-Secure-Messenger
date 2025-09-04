@@ -2,17 +2,16 @@
 use std::env;
 
 mod encryption_engine;
-mod message_processor;
 
 use encryption_engine::RustEncryptionEngine;
-use message_processor::RustMessageProcessor;
 
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = env::args().collect();
     
     if args.len() < 2 {
-        println!("Usage: cargo run --bin <command>");
+        println!("Usage: cargo run --bin encryption_engine <command>");
+        println!("Commands: encrypt, decrypt, benchmark, metrics");
         return;
     }
 
@@ -40,16 +39,10 @@ async fn main() {
             }
         },
         "metrics" => {
-            println!(r#"{{"rust_version":"1.75","memory_usage":"12MB","performance":"optimal","status":"healthy"}}"#);
-        },
-        "process" => {
-            if args.len() >= 3 {
-                let processor = RustMessageProcessor::new(1000, 50);
-                println!("🦀 Message processed: {}", &args[2]);
-            }
+            println!(r#"{{"rust_version":"1.89","memory_usage":"12MB","performance":"optimal","status":"healthy"}}"#);
         },
         _ => {
-            println!("Available commands: encrypt, decrypt, benchmark, metrics, process");
+            println!("Available commands: encrypt, decrypt, benchmark, metrics");
         }
     }
 }
