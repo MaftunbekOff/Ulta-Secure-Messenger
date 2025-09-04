@@ -368,7 +368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // In-memory cache for messages
   const messageCache = new Map<string, { data: any[], timestamp: number }>();
-  const CACHE_DURATION = 60000; // 60 seconds for better performance
+  const CACHE_DURATION = 300000; // 5 minutes for much better performance
   const CONNECTION_TIMEOUT = 5000; // 5 seconds connection timeout
 
   app.get('/api/chats/:chatId/messages', authenticate, async (req: AuthenticatedRequest, res) => {

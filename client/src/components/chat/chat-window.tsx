@@ -70,8 +70,8 @@ export default function ChatWindow({ chatId, isMobile = false }: ChatWindowProps
       return response.json();
     },
     enabled: !!chatId,
-    staleTime: 300000, // 5 minutes - much longer cache
-    gcTime: 1800000, // 30 minutes garbage collection
+    staleTime: 600000, // 10 minutes - even longer cache
+    gcTime: 3600000, // 1 hour garbage collection
     refetchOnWindowFocus: false, // Don't refetch on window focus
     refetchOnMount: false, // Don't refetch on component mount if data exists
     retry: 1, // Reduce retry attempts

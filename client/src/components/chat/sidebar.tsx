@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { decryptMessage, isMilitaryEncryptionAvailable } from "@/lib/militaryEncryption";
 import type { Chat, User as UserType, Message } from "@shared/schema";
+import { chatCache, preWarmCache } from "@/lib/superCache";
 
 interface SidebarProps {
   selectedChatId: string | null;

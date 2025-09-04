@@ -18,7 +18,7 @@ class MessageCache {
   private metadata = new Map<string, CacheMetadata>();
   private offlineQueue = new Map<string, any[]>(); // Offline message queue
   private readonly maxSize = 10000; // 10k messages for million users
-  private readonly expireTime = 3600000; // 1 hour cache time
+  private readonly expireTime = 7200000; // 2 hours cache time - longer for better performance
   private compressionEnabled = true;
 
   // Store messages with compression and offline support
