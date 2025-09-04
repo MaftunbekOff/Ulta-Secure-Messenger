@@ -539,22 +539,22 @@ export class DatabaseStorage implements IStorage {
   async getChatMessages(chatId: string, limit: number = 50, offset: number = 0): Promise<any[]> {
     try {
       // Ultra-optimized query with specific fields only
-      const messages = await db
+      const messagesResult = await db
         .select({
-          id: chatMessages.id,
-          content: chatMessages.content,
-          senderId: chatMessages.senderId,
-          createdAt: chatMessages.createdAt,
-          isEncrypted: chatMessages.isEncrypted,
-          messageType: chatMessages.messageType
+          id: messages.id,
+          content: messages.content,
+          senderId: messages.senderId,
+          createdAt: messages.createdAt,
+          isEncrypted: messages.isEncrypted,
+          messageType: messages.messageType
         })
-        .from(chatMessages)
-        .where(eq(chatMessages.chatId, chatId))
-        .orderBy(desc(chatMessages.createdAt))
+        .from(messages)
+        .where(eq(messages.chatId, chatId))
+        .orderBy(desc(messages.createdAt))
         .limit(Math.min(limit, 100)) // Cap at 100 for performance
         .offset(offset);
 
-      return messages;
+      return messagesResult;
     } catch (error) {
       console.error('getChatMessages error:', error);
       return [];
