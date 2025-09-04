@@ -224,5 +224,30 @@ args = "go mod download"
 task = "shell.exec"
 args = "go run server/websocket.go"
 
+[[workflows.workflow]]
+name = "Test Rust-Go Integration"
+author = 45696961
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cargo check"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cargo build --release"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go mod tidy"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go build server/websocket.go"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"✅ Rust va Go komponentlari tayyor!\""
+
 [agent]
 expertMode = true

@@ -321,6 +321,14 @@ func main() {
 	hub := newHub()
 	go hub.run()
 	
+	// Test Rust integration before starting
+	fmt.Println("🔍 Testing Rust integration...")
+	if testRustIntegration() {
+		fmt.Println("✅ Rust components working correctly")
+	} else {
+		fmt.Println("⚠️ Rust integration issues detected")
+	}
+	
 	// Start Rust performance monitoring
 	go logPerformanceMetrics()
 
@@ -334,4 +342,27 @@ func main() {
 	fmt.Println("  - Node.js API on :5000")
 	
 	log.Fatal(http.ListenAndServe("0.0.0.0:8080", nil))
+}
+
+// Test Rust integration
+func testRustIntegration() bool {
+	// Test message processor
+	cmd := exec.Command("cargo", "run", "--bin", "message_processor", "--", "Test integration")
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Printf("❌ Message processor test failed: %v\n", err)
+		return false
+	}
+	fmt.Printf("🦀 Message processor: %s\n", string(output))
+
+	// Test encryption engine
+	cmd = exec.Command("cargo", "run", "--bin", "encryption_engine", "--", "benchmark")
+	_, err = cmd.Output()
+	if err != nil {
+		fmt.Printf("❌ Encryption engine test failed: %v\n", err)
+		return false
+	}
+	fmt.Println("🦀 Encryption engine: Working")
+
+	return true
 }
