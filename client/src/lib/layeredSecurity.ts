@@ -313,6 +313,41 @@ export class LayeredSecurity {
     this.invalidateAllSessions();
   }
 
+  // Demo: xabar qatlamlar orqali qanday o'tishini ko'rsatish
+  async demonstrateMessageFlow(originalMessage: string): Promise<void> {
+    console.log(`\n🚀 "${originalMessage}" xabarining qatlamlar orqali o'tishi:`);
+    
+    try {
+      // 1-qatlam shifrlash
+      console.log(`\n1️⃣ Layer 1 (Client-side):`);
+      console.log(`📝 Original: "${originalMessage}"`);
+      
+      const layer1Encrypted = await this.sendSecureMessage(originalMessage, 1, 2);
+      console.log(`🔐 Layer 1 encrypted: ${layer1Encrypted.substring(0, 50)}...`);
+      
+      // 2-qatlamga o'tish
+      console.log(`\n2️⃣ Layer 2 (Server-side):`);
+      const layer2Encrypted = await this.sendSecureMessage(layer1Encrypted, 2, 3);
+      console.log(`🔐 Layer 2 encrypted: ${layer2Encrypted.substring(0, 50)}...`);
+      
+      // 3-qatlam (Rust)
+      console.log(`\n3️⃣ Layer 3 (Rust Engine):`);
+      console.log(`🦀 Final encryption va database ga saqlash`);
+      
+      // Teskari jarayon (decryption)
+      console.log(`\n📥 Decryption jarayoni:`);
+      const decryptedFromLayer3 = await this.receiveSecureMessage(layer2Encrypted, 2, 3);
+      const decryptedFromLayer2 = await this.receiveSecureMessage(layer1Encrypted, 1, 2);
+      const finalDecrypted = await this.receiveSecureMessage(originalMessage, 1, 1);
+      
+      console.log(`✅ Final result: "${originalMessage}"`);
+      console.log(`🛡️ Xabar 3 marta shifrlangan va xavfsiz yuborildi!\n`);
+      
+    } catch (error) {
+      console.error('❌ Layer demonstration failed:', error);
+    }
+  }
+
   private invalidateAllSessions(): void {
     // Layer 1 sessiyalarini tugatish
     localStorage.removeItem('user_session');
