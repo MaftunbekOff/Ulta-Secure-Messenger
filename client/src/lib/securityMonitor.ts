@@ -374,6 +374,7 @@ export class SecurityMonitor {
   // Monitoringni to'xtatish
   stopMonitoring(): void {
     this.isMonitoring = false;
+    // Additional cleanup like clearing intervals would go here if applicable
   }
 
   // Tozalash

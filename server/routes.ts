@@ -216,29 +216,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get('/api/auth/me', authenticate, async (req: AuthenticatedRequest, res) => {
-    // Set timeout for slow connections
+    const startTime = Date.now();
+    
+    // Ultra-fast timeout for immediate response
     const timeout = setTimeout(() => {
       if (!res.headersSent) {
         res.status(408).json({ message: "Request timeout" });
       }
-    }, 5000); // 5 second timeout
+    }, 2000); // 2 second timeout
 
     try {
-      // Optimize response headers
+      // Ultra-fast response headers
       res.set({
-        'Cache-Control': 'private, max-age=60', // 1 minute cache
-        'X-Response-Time': Date.now().toString()
+        'Cache-Control': 'private, max-age=300', // 5 minute cache
+        'X-Content-Type-Options': 'nosniff',
+        'Content-Type': 'application/json',
+        'Connection': 'keep-alive'
       });
 
       const user = await storage.getUser(req.userId!);
+      const responseTime = Date.now() - startTime;
+      
       clearTimeout(timeout);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Minimal response payload
-      res.json({
+      // Ultra-minimal response payload
+      const response = {
         id: user.id,
         username: user.username,
         email: user.email,
@@ -246,10 +252,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: user.lastName,
         profileImageUrl: user.profileImageUrl,
         isOnline: user.isOnline,
+      };
+
+      // Performance headers
+      res.set({
+        'X-Response-Time': `${responseTime}ms`,
+        'X-Performance': responseTime < 50 ? 'ULTRA_FAST' : responseTime < 200 ? 'FAST' : 'SLOW'
       });
+
+      res.json(response);
     } catch (error) {
       clearTimeout(timeout);
-      console.error('Auth me error:', error);
+      const responseTime = Date.now() - startTime;
+      console.error(`Auth me error (${responseTime}ms):`, error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });

@@ -331,24 +331,54 @@ export class MemoryStorage implements IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async getUser(id: string): Promise<User | null> {
-    // Check cache first
-    const cacheKey = `user:${id}`;
+  // Ultra-fast user cache
+  private userCache = new Map<string, { user: User, timestamp: number }>();
+  private readonly USER_CACHE_TTL = 60000; // 60 seconds
 
+  async getUser(userId: string): Promise<User | null> {
     try {
-      const user = await db.select({
-        id: users.id,
-        username: users.username,
-        email: users.email,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        profileImageUrl: users.profileImageUrl,
-        isOnline: users.isOnline,
-      }).from(users).where(eq(users.id, id)).limit(1);
+      // Check cache first for sub-millisecond response
+      const cached = this.userCache.get(userId);
+      if (cached && Date.now() - cached.timestamp < this.USER_CACHE_TTL) {
+        return cached.user;
+      }
 
-      return user[0] || null;
+      // Optimized query with specific fields only
+      const [user] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          isOnline: users.isOnline,
+          passwordHash: users.passwordHash,
+          publicKey: users.publicKey,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (user) {
+        // Cache the result
+        this.userCache.set(userId, { user, timestamp: Date.now() });
+
+        // Cleanup old cache entries
+        if (this.userCache.size > 1000) {
+          const now = Date.now();
+          for (const [key, value] of this.userCache.entries()) {
+            if (now - value.timestamp > this.USER_CACHE_TTL) {
+              this.userCache.delete(key);
+            }
+          }
+        }
+      }
+
+      return user || null;
     } catch (error) {
-      console.error('Database query error:', error);
+      console.error('Error fetching user:', error);
       return null;
     }
   }
