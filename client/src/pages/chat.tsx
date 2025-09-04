@@ -107,40 +107,6 @@ const useChatContext = () => {
         queryKey: ['messages', selectedChat.id] 
       });
 
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      
-      // Remove optimistic message on error
-      setMessages(prev => prev.filter(msg => msg.id !== tempId));
-      
-      // Show error toast
-      toast({
-        variant: "destructive",
-        title: "Xabar yuborishda xatolik",
-        description: error instanceof Error ? error.message : "Qaytadan urinib ko'ring"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Autentifikatsiya xatosi');
-        }
-        const errorText = await response.text();
-        throw new Error(`Xabar yuborishda xatolik: ${response.status} - ${errorText}`);
-      }
-
-      const newMessage = await response.json();
-
-      // Replace optimistic message with real one
-      setMessages(prev => prev.map(msg => 
-        msg.id === tempId ? newMessage : msg
-      ));
-
-      // Update chat list with new message
-      queryClient.invalidateQueries(['chats']);
-
       // Success feedback
       console.log('✅ Xabar muvaffaqiyatli yuborildi');
 
