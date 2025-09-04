@@ -36,7 +36,7 @@ export default defineConfig({
     hmr: {
       port: 5000,
       host: '0.0.0.0',
-      clientPort: process.env.NODE_ENV === 'production' ? 443 : 5000,
+      clientPort: 5000,
     },
     host: '0.0.0.0',
     port: 5000, // Frontend dev server port
