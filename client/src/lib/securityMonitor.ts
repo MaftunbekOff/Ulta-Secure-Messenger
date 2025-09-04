@@ -265,4 +265,3 @@ export function initializeSecurityMonitoring(): SecurityMonitor {
   return securityMonitor;
 }
 
-export { initializeSecurityMonitoring };

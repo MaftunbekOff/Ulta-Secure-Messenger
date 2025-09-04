@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "postgresql-16"]
+modules = ["nodejs-20", "web", "postgresql-16", "go-1.24"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
@@ -17,30 +17,13 @@ externalPort = 80
 
 [[ports]]
 localPort = 8080
+externalPort = 8080
 
 [env]
 PORT = "5000"
 
 [workflows]
-runButton = "Complete UltraSecure Stack"
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Start application"
-
-[[workflows.workflow]]
-name = "Start application"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-waitForPort = 5000
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "UltraSecure Parallel Stack"
@@ -71,6 +54,43 @@ args = "cd client && npm run dev"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "go run server/websocket.go"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Full Stack Server"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "WebSocket Server"
+
+[[workflows.workflow]]
+name = "Full Stack Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow]]
+name = "WebSocket Server"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go run server/websocket.go"
+waitForPort = 8080
 
 [agent]
 expertMode = true
