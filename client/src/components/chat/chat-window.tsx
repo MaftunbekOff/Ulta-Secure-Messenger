@@ -27,7 +27,7 @@ export default function ChatWindow({ chatId = 'default', currentUserId = 'user1'
     sendMessage, 
     lastMessage,
     connectionStatus 
-  } = useWebSocket(`ws://localhost:8080/ws`);
+  } = useWebSocket();
 
   // Handle incoming messages
   useEffect(() => {
@@ -75,7 +75,7 @@ export default function ChatWindow({ chatId = 'default', currentUserId = 'user1'
     }
 
     const message = {
-      type: 'message',
+      type: 'message' as const,
       chatId,
       content,
       messageId: Date.now().toString(),
@@ -95,7 +95,7 @@ export default function ChatWindow({ chatId = 'default', currentUserId = 'user1'
     setMessages(prev => [...prev, localMessage]);
 
     // Send via WebSocket
-    sendMessage(JSON.stringify(message));
+    sendMessage(message);
   };
 
   return (
@@ -128,7 +128,12 @@ export default function ChatWindow({ chatId = 'default', currentUserId = 'user1'
             {messages.map((message) => (
               <MessageBubble
                 key={message.id}
-                message={message}
+                message={{
+                  ...message,
+                  senderId: message.userId,
+                  timestamp: message.timestamp.getTime(),
+                  isEncrypted: message.encrypted
+                }}
                 isOwn={message.userId === currentUserId}
                 senderName={message.userId === 'system' ? 'System' : `User ${message.userId}`}
               />
@@ -140,7 +145,6 @@ export default function ChatWindow({ chatId = 'default', currentUserId = 'user1'
           <MessageInput
             onSendMessage={handleSendMessage}
             disabled={!isConnected}
-            placeholder={isConnected ? "Xabar yozing..." : "Ulanish kutilmoqda..."}
           />
         </div>
       </CardContent>

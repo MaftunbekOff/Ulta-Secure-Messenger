@@ -26,9 +26,14 @@ export default function Login() {
   const [usernameCheckTimeout, setUsernameCheckTimeout] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    initializeSecurityMonitoring().catch(error => {
+    try {
+      const monitor = initializeSecurityMonitoring();
+      monitor.startMonitoring().catch(error => {
+        console.warn('Failed to start security monitoring:', error);
+      });
+    } catch (error) {
       console.warn('Failed to initialize security monitoring:', error);
-    });
+    }
   }, []);
 
 

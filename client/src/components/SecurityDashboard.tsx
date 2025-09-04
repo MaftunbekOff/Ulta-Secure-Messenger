@@ -152,7 +152,7 @@ export function SecurityDashboard() {
   };
 
   const encryptionStatus = encryptionManager.getEncryptionStatus();
-  const layerStatus = layeredSecurity.getStatus();
+  const layerStatus = layeredSecurity.checkLayerSecurity();
 
   if (!isVisible) {
     return (

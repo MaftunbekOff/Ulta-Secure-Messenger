@@ -253,16 +253,6 @@ class SecurityMonitor {
 export const securityMonitor = new SecurityMonitor();
 
 // Export initialization function
-// Note: The original code did not contain an 'initialize' method in the SecurityMonitor class.
-// This export assumes a method named 'initialize' was intended. If not, this export might need adjustment.
 export function initializeSecurityMonitoring(): SecurityMonitor {
-  // The original thinking mentions Vite development server issues and React export problems.
-  // This change focuses solely on the export fix as requested by the <changes> snippet.
-  // The securityMonitor instance is already exported above.
-  // If a new instance needs to be created or a specific initialization method called,
-  // that logic would need to be added here based on a more detailed requirement.
-  // For now, we return the existing singleton instance.
   return securityMonitor;
 }
-
-export { initializeSecurityMonitoring };

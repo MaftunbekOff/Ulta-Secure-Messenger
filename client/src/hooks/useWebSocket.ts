@@ -99,10 +99,7 @@ export function useWebSocket() {
         setReconnectAttempts(0);
         setConnectionStatus('connected');
 
-        // Enable keepalive for better connection
-        if (ws.current) {
-          ws.current.ping?.();
-        }
+        // Connection established successfully
       };
 
       ws.current.onmessage = (event) => {

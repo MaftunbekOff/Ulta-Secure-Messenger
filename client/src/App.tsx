@@ -11,8 +11,6 @@ import Login from "@/pages/login";
 import Profile from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
-import MessageBubble from './components/chat/message-bubble';
-import MessageInput from './components/chat/message-input';
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -89,8 +87,8 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Router />
       <Toaster />
-      <SecurityDashboard />
-      <PerformanceDashboard />
+      {/* <SecurityDashboard /> */}
+      {/* <PerformanceDashboard /> */}
     </QueryClientProvider>
   );
 }
