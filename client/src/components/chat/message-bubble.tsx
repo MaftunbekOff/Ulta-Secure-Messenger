@@ -20,7 +20,7 @@ interface MessageBubbleProps {
   senderAvatar?: string;
 }
 
-export function MessageBubble({ message, isOwn, senderName, senderAvatar }: MessageBubbleProps) {
+export const MessageBubble = ({ message, isOwn, senderName, senderAvatar }: MessageBubbleProps) => {
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString('uz-UZ', {
       hour: '2-digit',
@@ -116,3 +116,5 @@ export function MessageBubble({ message, isOwn, senderName, senderAvatar }: Mess
     </div>
   );
 }
+
+export default MessageBubble;
