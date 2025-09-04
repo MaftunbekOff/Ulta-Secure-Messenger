@@ -114,8 +114,12 @@ export class SecurityMonitor {
     const issues: SecurityEvent[] = [];
 
     try {
-      // Faqat production muhitida tekshirish
-      if (process.env.NODE_ENV !== 'production') {
+      // Safer environment detection
+      const isProduction = typeof window !== 'undefined' && 
+                          (window.location.hostname.includes('replit') || 
+                           process.env.NODE_ENV === 'production');
+      
+      if (!isProduction) {
         return issues; // Development muhitida hech narsa tekshirmaymiz
       }
 
@@ -371,59 +375,28 @@ export const initializeSecurityMonitoring = async (): Promise<void> => {
   }
 };
 
-// Global promise rejection handler - optimized for WebSocket errors
-window.addEventListener('unhandledrejection', (event) => {
-  // Prevent the default behavior and ignore all WebSocket errors
-  event.preventDefault();
+// Optimized error handling for production only
+if (typeof window !== 'undefined' && 
+    (window.location.hostname.includes('replit') || process.env.NODE_ENV === 'production')) {
   
-  // Silent ignore all promise rejections for better performance
-  return;
-  
-  // Only log significant errors
-  if (reason.length > 10 && !reason.includes('WebSocket')) {
-    try {
-      securityMonitor.logSecurityEvent({
-        type: 'unusual_activity',
-        severity: 'low',
-        details: {
-          message: 'Promise rejection',
-          reason: reason.substring(0, 50),
-          type: 'promise_rejection'
-        }
-      });
-    } catch {
-      // Silent failure in logging
-    }
-  }
-});
-
-// Global error handler - reduced logging
-window.addEventListener('error', (event) => {
-  const message = event.error?.message || event.message || '';
-  
-  // Filter out common development errors
-  if (message.includes('WebSocket') || 
-      message.includes('fetch') || 
-      message.includes('Failed to construct') ||
-      message.includes('vite') ||
-      message.includes('HMR') ||
-      message.length < 5) {
-    return; // Silent ignore
-  }
-  
-  // Only log significant application errors
-  try {
-    securityMonitor.logSecurityEvent({
-      type: 'unusual_activity',
-      severity: 'low',
-      details: {
-        message: 'Application error',
-        error: message.substring(0, 50),
-        filename: event.filename?.substring(0, 30),
-        line: event.lineno
+  // Minimal global error monitoring
+  window.addEventListener('unhandledrejection', (event) => {
+    // Only log critical application errors
+    const reason = event.reason?.message || event.reason || '';
+    if (reason.includes('CRITICAL') || reason.includes('SECURITY')) {
+      try {
+        securityMonitor.logSecurityEvent({
+          type: 'unusual_activity',
+          severity: 'high',
+          details: {
+            message: 'Critical promise rejection',
+            reason: reason.substring(0, 100)
+          }
+        });
+      } catch {
+        // Silent failure
       }
-    });
-  } catch {
-    // Silent failure
-  }
-});
+    }
+    event.preventDefault();
+  });
+}

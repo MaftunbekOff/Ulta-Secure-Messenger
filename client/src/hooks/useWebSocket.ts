@@ -38,16 +38,24 @@ export function useWebSocket() {
     setIsConnecting(true);
 
     try {
-      // WebSocket URL ni to'g'ri hosil qilish
+      // Replit environment WebSocket URL configuration
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = window.location.hostname;
-      const port = window.location.hostname.includes('replit') ? '' : ':8080';
-      const wsUrl = `${protocol}//${host}${port}/ws`;
-
-      // Silent connection attempts
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Attempting WebSocket connection to:', wsUrl);
+      
+      // Auto-detect Replit environment and set correct port
+      let wsUrl;
+      if (host.includes('replit.dev') || host.includes('replit.co') || host.includes('replit.app')) {
+        // Replit production environment - use same host with /ws path
+        wsUrl = `${protocol}//${host}/ws`;
+      } else if (host === 'localhost' || host === '127.0.0.1') {
+        // Local development - use port 8080
+        wsUrl = `ws://${host}:8080/ws`;
+      } else {
+        // Other environments
+        wsUrl = `${protocol}//${host}:8080/ws`;
       }
+
+      console.log('🔗 Connecting to WebSocket:', wsUrl);
 
       const ws = new WebSocket(wsUrl);
 

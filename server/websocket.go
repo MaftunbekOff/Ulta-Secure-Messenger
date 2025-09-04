@@ -434,12 +434,17 @@ func main() {
 	// Start Rust performance monitoring
 	go logPerformanceMetrics()
 
-	// Add CORS headers for WebSocket connections
+	// Enhanced CORS and WebSocket handler for Replit
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		// Add CORS headers
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		// Comprehensive CORS headers for Replit
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			origin = "*"
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
@@ -447,6 +452,24 @@ func main() {
 		}
 
 		serveWS(hub, w, r)
+	})
+
+	// Health check endpoint for Replit
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`
+<!DOCTYPE html>
+<html>
+<head><title>UltraSecure WebSocket Server</title></head>
+<body>
+	<h1>🚀 UltraSecure WebSocket Server</h1>
+	<p>Status: <span style="color:green">Active</span></p>
+	<p>WebSocket Endpoint: /ws</p>
+	<p>Performance: Telegram-killer ready!</p>
+</body>
+</html>
+		`))
 	})
 
 	// Add health check endpoint

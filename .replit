@@ -428,5 +428,34 @@ args = "npm run dev"
 task = "shell.exec"
 args = "echo \"✅ Ultra Performance Stack Ready - Faster than Telegram!\""
 
+[[workflows.workflow]]
+name = "Load Test 100k Users"
+author = 45696961
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🚀 Preparing load testing environment...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd load-testing"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "chmod +x run-tests.sh"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"⚡ Starting Telegram-killer performance test...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "./run-tests.sh"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"✅ Load testing complete - check results above\""
+
 [agent]
 expertMode = true
