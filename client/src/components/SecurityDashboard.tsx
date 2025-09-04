@@ -5,6 +5,8 @@ import { Badge } from './ui/badge';
 import { Shield, AlertTriangle, CheckCircle, XCircle, Activity } from 'lucide-react';
 import { securityMonitor } from '../lib/securityMonitor';
 import { encryptionManager } from '../lib/encryptionIntegration';
+import { selfDestructMessages } from '../lib/selfDestructMessages';
+import { layeredSecurity } from '../lib/layeredSecurity';
 
 export function SecurityDashboard() {
   const [securityReport, setSecurityReport] = useState({
@@ -146,6 +148,7 @@ export function SecurityDashboard() {
   };
 
   const encryptionStatus = encryptionManager.getEncryptionStatus();
+  const layerStatus = layeredSecurity.getStatus();
 
   if (!isVisible) {
     return (

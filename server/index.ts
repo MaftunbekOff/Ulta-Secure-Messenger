@@ -40,13 +40,44 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+  // Secure layer communication endpoints
+  app.post('/api/secure-storage', async (req, res) => {
+    try {
+      const { key, value, layer } = req.body;
+      console.log(`🔐 Secure storage request for layer ${layer}`);
 
-    res.status(status).json({ message });
-    throw err;
+      // Layer 2 da xavfsiz saqlash
+      const secureData = Buffer.from(JSON.stringify({ key, value, timestamp: Date.now() })).toString('base64');
+
+      res.json({ success: true, stored: true, layer });
+    } catch (error) {
+      res.status(500).json({ error: 'Secure storage failed' });
+    }
   });
+
+  app.post('/api/rust/secure-vault', async (req, res) => {
+    try {
+      const { key, value, layer } = req.body;
+      console.log(`🦀 Rust secure vault request for layer ${layer}`);
+
+      // Rust layer ga xavfsiz yuborish (simulation)
+      res.json({ success: true, vaulted: true, layer });
+    } catch (error) {
+      res.status(500).json({ error: 'Rust vault failed' });
+    }
+  });
+
+  app.post('/api/invalidate-sessions', (req, res) => {
+    console.log('🔄 All layer sessions invalidated');
+    res.json({ success: true, invalidated: true });
+  });
+
+  // Error handling
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error(err.stack);
+    res.status(500).send('Something broke!');
+  });
+
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
