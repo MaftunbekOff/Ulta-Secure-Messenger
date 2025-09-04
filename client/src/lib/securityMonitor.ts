@@ -129,13 +129,16 @@ export class SecurityMonitor {
     const issues: SecurityEvent[] = [];
 
     try {
-      // Safer environment detection
-      const isProduction = typeof window !== 'undefined' && 
-                          (window.location.hostname.includes('replit') || 
-                           process.env.NODE_ENV === 'production');
+      // Safer environment detection with proper checks
+      if (typeof window === 'undefined') {
+        return issues; // Server-side rendering, skip checks
+      }
+
+      const isProduction = window.location?.hostname?.includes('replit') || 
+                          process.env.NODE_ENV === 'production';
 
       // Faqat production muhitida va kam chastotada tekshirish
-      if (!isProduction || Math.random() > 0.01) { // 1% chance to run - reduced from 10%
+      if (!isProduction || Math.random() > 0.1) { // 10% chance to run
         return issues; 
       }
 
@@ -350,21 +353,23 @@ export class SecurityMonitor {
       // Tarmoq monitoringini boshlash
       this.monitorNetworkSecurity();
 
-      // Har 5 daqiqada tekshirish (spam ni kamaytirish uchun)
-      setInterval(async () => {
+      // Har 10 daqiqada tekshirish (spam ni kamaytirish uchun)
+      this.intervalId = setInterval(async () => {
         if (this.isMonitoring) {
           try {
             const issues = this.checkBrowserSecurity();
-            issues.forEach(issue => this.logSecurityEvent(issue));
+            if (issues.length > 0) {
+              issues.forEach(issue => this.logSecurityEvent(issue));
+            }
             await this.checkMemorySecurity();
           } catch (error) {
             // Silent error handling - no console spam
             if (process.env.NODE_ENV === 'development') {
-              console.debug('Security check minor issue:', error?.message || 'Unknown');
+              console.debug('Security check completed');
             }
           }
         }
-      }, 600000); // 10 minutes instead of 5 minutes
+      }, 600000); // 10 minutes
     } catch (error) {
       console.error('Security monitoring start failed:', error);
       throw error;
@@ -374,8 +379,14 @@ export class SecurityMonitor {
   // Monitoringni to'xtatish
   stopMonitoring(): void {
     this.isMonitoring = false;
-    // Additional cleanup like clearing intervals would go here if applicable
+    // Clear intervals and cleanup
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
   }
+
+  private intervalId: NodeJS.Timeout | null = null;
 
   // Tozalash
   cleanup(): void {
