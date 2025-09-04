@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Shield, AlertTriangle, CheckCircle, XCircle, Activity } from 'lucide-react';
 import { securityMonitor } from '../lib/securityMonitor';
+import { encryptionManager } from '../lib/encryptionManager'; // Assuming encryptionManager is imported
 
 export function SecurityDashboard() {
   const [securityReport, setSecurityReport] = useState({
@@ -14,16 +14,35 @@ export function SecurityDashboard() {
   });
   const [isVisible, setIsVisible] = useState(false);
 
+  // Security monitoring with encryption status
   useEffect(() => {
-    const updateReport = () => {
-      const report = securityMonitor.generateSecurityReport();
-      setSecurityReport(report);
+    const monitor = securityMonitor; // Assuming securityMonitor instance is directly available or obtained differently
+    monitor.startMonitoring();
+
+    const checkSecurityIssues = () => {
+      const issues = monitor.getSecurityEvents();
+      const recentIssues = issues.filter(
+        issue => Date.now() - issue.timestamp < 60000
+      );
+
+      // Check encryption status
+      const encryptionStatus = encryptionManager.getEncryptionStatus();
+      if (!encryptionStatus.isSecure) {
+        console.warn('Encryption not properly configured');
+        // Optionally update state to show a warning in the UI
+      }
+
+      if (recentIssues.length > 0) {
+        console.warn('Security issues detected:', recentIssues);
+      }
     };
 
-    updateReport();
-    const interval = setInterval(updateReport, 30000); // Har 30 soniyada yangilanish
+    const interval = setInterval(checkSecurityIssues, 10000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      monitor.stopMonitoring();
+    };
   }, []);
 
   const getScoreColor = (score: number) => {
@@ -41,17 +60,19 @@ export function SecurityDashboard() {
   const getSeverityBadge = (severity: string) => {
     const variants = {
       low: 'secondary',
-      medium: 'default', 
+      medium: 'default',
       high: 'destructive',
       critical: 'destructive'
     };
-    
+
     return (
       <Badge variant={variants[severity] as any} className="text-xs">
         {severity.toUpperCase()}
       </Badge>
     );
   };
+
+  const encryptionStatus = encryptionManager.getEncryptionStatus();
 
   if (!isVisible) {
     return (
@@ -86,7 +107,7 @@ export function SecurityDashboard() {
             </Button>
           </div>
         </CardHeader>
-        
+
         <CardContent className="space-y-3">
           {/* Overall Security Score */}
           <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
@@ -122,7 +143,11 @@ export function SecurityDashboard() {
             <div className="space-y-1 text-xs">
               <div className="flex items-center justify-between">
                 <span>End-to-End Encryption</span>
-                <CheckCircle className="h-3 w-3 text-green-500" />
+                {encryptionStatus.isSecure ? (
+                  <CheckCircle className="h-3 w-3 text-green-500" />
+                ) : (
+                  <XCircle className="h-3 w-3 text-red-500" />
+                )}
               </div>
               <div className="flex items-center justify-between">
                 <span>Military-Grade Crypto</span>

@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { encryptMessage, isMilitaryEncryptionAvailable } from "@/lib/militaryEncryption";
 import type { Chat, Message, User } from "@shared/schema";
+import { encryptionManager } from "@/lib/encryptionIntegration";
 
 interface ChatWindowProps {
   chatId: string;
@@ -210,7 +211,7 @@ export default function ChatWindow({ chatId, isMobile = false }: ChatWindowProps
     if (chat.isGroup) {
       return chat.name || "Group Chat";
     }
-    return chat.otherUser?.firstName && chat.otherUser?.lastName 
+    return chat.otherUser?.firstName && chat.otherUser?.lastName
       ? `${chat.otherUser.firstName} ${chat.otherUser.lastName}`
       : chat.otherUser?.username || "Unknown User";
   };
@@ -240,7 +241,7 @@ export default function ChatWindow({ chatId, isMobile = false }: ChatWindowProps
       </div>
     ) : (
       <span className="text-xs text-muted-foreground">
-        {chat.otherUser?.lastSeen 
+        {chat.otherUser?.lastSeen
           ? `Last seen ${new Date(chat.otherUser.lastSeen).toLocaleDateString()}`
           : "Offline"
         }
@@ -306,7 +307,7 @@ export default function ChatWindow({ chatId, isMobile = false }: ChatWindowProps
       </div>
 
       {/* Messages Area */}
-      <div 
+      <div
         className={`${isMobile ? 'messages-container p-4 space-y-4' : 'flex-1 p-4 space-y-4 custom-scrollbar'}`}
         style={isMobile ? {
           height: 'calc(100vh - 140px)',
