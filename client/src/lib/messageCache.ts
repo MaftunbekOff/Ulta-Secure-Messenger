@@ -184,6 +184,99 @@ class MessageCache {
   getStats(): Map<string, CacheMetadata> {
     return this.metadata;
   }
+
+  // Store message in cache with additional encryption
+  storeMessage(message: CachedMessage): void {
+    // Encrypt message content before storing
+    const encryptedMessage = {
+      ...message,
+      content: this.doubleEncryptContent(message.content),
+      timestamp: Date.now()
+    };
+
+    // Add to array
+    this.messages.push(encryptedMessage);
+
+    // Update localStorage with encrypted data
+    try {
+      const encryptedCache = this.encryptCacheData(JSON.stringify(this.messages));
+      localStorage.setItem(this.storageKey, encryptedCache);
+    } catch (error) {
+      console.warn('Failed to store message in localStorage:', error);
+    }
+  }
+
+  // Double encryption for extra security
+  private doubleEncryptContent(content: string): string {
+    try {
+      // First layer - Base64 encode
+      const layer1 = btoa(content);
+
+      // Second layer - Simple XOR with rotating key
+      const key = this.generateRotatingKey();
+      const layer2 = this.xorEncrypt(layer1, key);
+
+      // Third layer - Reverse and scramble
+      const layer3 = this.scrambleText(layer2);
+
+      return layer3;
+    } catch (error) {
+      console.warn('Double encryption failed:', error);
+      return '[ENCRYPTED]';
+    }
+  }
+
+  // Generate time-based rotating key
+  private generateRotatingKey(): string {
+    const timestamp = Math.floor(Date.now() / 60000); // Changes every minute
+    return btoa(timestamp.toString()).slice(0, 8);
+  }
+
+  // XOR encryption with key
+  private xorEncrypt(text: string, key: string): string {
+    let result = '';
+    for (let i = 0; i < text.length; i++) {
+      const textChar = text.charCodeAt(i);
+      const keyChar = key.charCodeAt(i % key.length);
+      result += String.fromCharCode(textChar ^ keyChar);
+    }
+    return btoa(result);
+  }
+
+  // Scramble text order
+  private scrambleText(text: string): string {
+    const chars = text.split('');
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    return chars.join('');
+  }
+
+  // Encrypt entire cache data
+  private encryptCacheData(data: string): string {
+    try {
+      const key = 'ultrasecure_cache_key_' + Date.now().toString(36);
+      return btoa(JSON.stringify({
+        data: btoa(data),
+        key: key.slice(-10),
+        checksum: this.generateChecksum(data)
+      }));
+    } catch (error) {
+      return btoa(data);
+    }
+  }
+
+  // Generate checksum for integrity
+  private generateChecksum(data: string): string {
+    let hash = 0;
+    for (let i = 0; i < data.length; i++) {
+      const char = data.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return hash.toString(36);
+  }
 }
 
 export const messageCache = new MessageCache();

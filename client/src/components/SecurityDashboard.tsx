@@ -13,6 +13,24 @@ export function SecurityDashboard() {
     recommendations: []
   });
   const [isVisible, setIsVisible] = useState(false);
+  const [layerBreach, setLayerBreach] = useState({
+    layer1: false,
+    layer2: false,
+    breachTime: null,
+  });
+
+  // Method to activate protection measures when a breach is detected
+  const activateBreachProtection = () => {
+    console.warn('🚨 Activating auto-protection measures...');
+    // In a real application, this would involve actions like:
+    // - Isolating affected components
+    // - Revoking access
+    // - Initiating a security audit
+    // - Sending real-time alerts to administrators
+    // For demonstration, we'll just log a message and potentially disable certain features.
+    // Example: Temporarily disable message reading for layer 1
+    // encryptionManager.disableFeature('messageReadingLayer1');
+  };
 
   // Security monitoring with encryption status
   useEffect(() => {
@@ -44,6 +62,31 @@ export function SecurityDashboard() {
         if (!encryptionStatus.isSecure) {
           console.warn('Encryption not properly configured');
         }
+
+        // Simulate layer breach detection
+        // In a real scenario, this would come from the securityMonitor's events or specific checks
+        const layer1Breached = issues.some(issue => issue.type === 'LAYER1_BREACH');
+        const layer2Breached = issues.some(issue => issue.type === 'LAYER2_BREACH');
+
+
+        // Update breach status and trigger protection
+        setLayerBreach(prev => {
+          const newState = {
+            ...prev,
+            layer1: layer1Breached,
+            layer2: layer2Breached,
+            breachTime: (layer1Breached || layer2Breached) ? Date.now() : prev.breachTime
+          };
+
+          // If layer 1 is breached, activate protection measures
+          if (layer1Breached && !prev.layer1) {
+            console.warn('🚨 Layer 1 breach detected - activating protection');
+            this.activateBreachProtection();
+          }
+
+          return newState;
+        });
+
 
         if (recentIssues.length > 0) {
           console.warn('Security issues detected:', recentIssues);
@@ -199,6 +242,18 @@ export function SecurityDashboard() {
                 <span>Real-time Monitoring</span>
                 <Activity className="h-3 w-3 text-blue-500" />
               </div>
+              {layerBreach.layer1 && (
+                <div className="flex items-center justify-between text-red-500 font-semibold">
+                  <span>Layer 1 Breach Detected</span>
+                  <XCircle className="h-3 w-3 text-red-500" />
+                </div>
+              )}
+              {layerBreach.layer2 && (
+                <div className="flex items-center justify-between text-red-500 font-semibold">
+                  <span>Layer 2 Breach Detected</span>
+                  <XCircle className="h-3 w-3 text-red-500" />
+                </div>
+              )}
             </div>
           </div>
 
