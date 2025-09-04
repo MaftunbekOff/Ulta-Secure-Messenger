@@ -72,3 +72,21 @@ export async function encryptMessage(message: string, recipientPublicKey: string
     return btoa(message); // Simple fallback
   }
 }
+
+// Simple client-side decryption for demo purposes
+export async function decryptMessage(encryptedMessage: string, privateKey?: string): Promise<string> {
+  try {
+    // Simple base64 decoding for demonstration
+    const decoded = atob(encryptedMessage);
+    
+    // Remove encryption suffix if present
+    if (decoded.includes('_encrypted_')) {
+      return decoded.split('_encrypted_')[0];
+    }
+    
+    return decoded;
+  } catch (error) {
+    console.warn('Decryption failed, showing as encrypted:', error);
+    return '🔒 Shifrlangan xabar';
+  }
+}

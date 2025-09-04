@@ -492,13 +492,18 @@ export default function Sidebar({ selectedChatId, onSelectChat, isMobile = false
                   {user?.username?.charAt(0).toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
-              <div className="min-w-0">
-                <h3 className="font-medium text-sm truncate" data-testid="user-name">
-                  {user?.firstName && user?.lastName 
-                    ? `${user.firstName} ${user.lastName}`
-                    : user?.username
-                  }
-                </h3>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center space-x-2">
+                  <h3 className="font-medium text-sm truncate" data-testid="user-name">
+                    {user?.firstName && user?.lastName 
+                      ? `${user.firstName} ${user.lastName}`
+                      : user?.username
+                    }
+                  </h3>
+                  {user?.isOnline && (
+                    <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0" data-testid="user-online-indicator" />
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground truncate" data-testid="user-handle">
                   @{user?.username}
                 </p>
@@ -627,17 +632,19 @@ export default function Sidebar({ selectedChatId, onSelectChat, isMobile = false
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <h4 className="font-medium text-sm truncate" data-testid={`user-name-${searchedUser.id}`}>
-                      {searchedUser.firstName && searchedUser.lastName 
-                        ? `${searchedUser.firstName} ${searchedUser.lastName}`
-                        : searchedUser.username
-                      }
-                    </h4>
-                    {searchedUser.isOnline && (
-                      <div className="w-2 h-2 bg-green-500 rounded-full" />
-                    )}
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <h4 className="font-medium text-sm truncate" data-testid={`user-name-${searchedUser.id}`}>
+                        {searchedUser.firstName && searchedUser.lastName 
+                          ? `${searchedUser.firstName} ${searchedUser.lastName}`
+                          : searchedUser.username
+                        }
+                      </h4>
+                      {searchedUser.isOnline && (
+                        <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0" data-testid={`user-online-${searchedUser.id}`} />
+                      )}
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground truncate">
+                  <p className="text-sm text-muted-foreground truncate" data-testid={`user-username-${searchedUser.id}`}>
                     @{searchedUser.username}
                   </p>
                 </div>
