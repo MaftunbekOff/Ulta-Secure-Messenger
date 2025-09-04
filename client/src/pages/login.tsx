@@ -277,11 +277,11 @@ export default function Login() {
                       onChange={(e) => {
                         let filtered = e.target.value;
 
-                        // Remove all characters that are not letters or numbers
-                        filtered = filtered.replace(/[^a-zA-Z0-9]/g, '');
+                        // Remove all characters that are not letters, numbers, or underscores
+                        filtered = filtered.replace(/[^a-zA-Z0-9_]/g, '');
 
-                        // If it starts with a number, remove all leading numbers
-                        filtered = filtered.replace(/^[0-9]+/, '');
+                        // If it starts with a number or underscore, remove all leading numbers and underscores
+                        filtered = filtered.replace(/^[0-9_]+/, '');
 
                         setUsernameValue(filtered);
                         registerForm.setValue("username", filtered, {
