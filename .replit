@@ -19,7 +19,7 @@ externalPort = 80
 PORT = "5000"
 
 [workflows]
-runButton = "Working Development Server"
+runButton = "Complete Polyglot Stack"
 
 [[workflows.workflow]]
 name = "Project"
@@ -264,6 +264,19 @@ args = "npm run dev"
 
 [[workflows.workflow]]
 name = "Full Stack with WebSocket"
+author = 45696961
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go run server/websocket.go"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Complete Polyglot Stack"
 author = 45696961
 mode = "parallel"
 
