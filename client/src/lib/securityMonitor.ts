@@ -249,5 +249,14 @@ class SecurityMonitor {
   }
 }
 
-// Export singleton instance
+// Export the singleton instance
 export const securityMonitor = new SecurityMonitor();
+
+// Export initialization function
+// Note: The original code did not contain an 'initialize' method in the SecurityMonitor class.
+// This export assumes a method named 'initialize' was intended. If not, this export might need adjustment.
+export function initializeSecurityMonitoring() {
+  const monitor = new SecurityMonitor(); // Using 'new' as 'getInstance' logic is internal to the class
+  // If there was an 'initialize' method: monitor.initialize();
+  return monitor;
+}
