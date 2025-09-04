@@ -12,6 +12,10 @@ path = "server/main.rs"
 name = "message_processor" 
 path = "server/message_processor.rs"
 
+[[bin]]
+name = "metrics"
+path = "server/metrics.rs"
+
 [dependencies]
 aes-gcm = "0.10"
 rsa = { version = "0.9", features = ["sha2"] }

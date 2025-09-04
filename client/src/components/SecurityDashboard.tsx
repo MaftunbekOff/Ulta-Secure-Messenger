@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Shield, AlertTriangle, CheckCircle, XCircle, Activity } from 'lucide-react';
 import { securityMonitor } from '../lib/securityMonitor';
-import { encryptionManager } from '../lib/encryptionManager'; // Assuming encryptionManager is imported
+import { encryptionManager } from '../lib/encryptionIntegration';
 
 export function SecurityDashboard() {
   const [securityReport, setSecurityReport] = useState({
