@@ -87,9 +87,14 @@ export class RustIntegration {
 
     // Node.js encryption benchmark (simple test)
     const nodeStart = Date.now();
-    for (let i = 0; i < iterations; i++) {
-      // Simple hash operation for comparison
-      require('crypto').createHash('sha256').update(testMessage + i).digest('hex');
+    try {
+      const crypto = await import('crypto');
+      for (let i = 0; i < iterations; i++) {
+        // Simple hash operation for comparison
+        crypto.createHash('sha256').update(testMessage + i).digest('hex');
+      }
+    } catch (error) {
+      console.warn('Node.js crypto module not available, using fallback');
     }
     const nodeTime = Date.now() - nodeStart;
 

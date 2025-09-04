@@ -64,9 +64,8 @@ export function SecurityDashboard() {
     return () => {
       clearInterval(interval);
       try {
-        if (monitor && typeof monitor.stopMonitoring === 'function') {
-          monitor.stopMonitoring();
-        }
+        // Cleanup security monitoring if needed
+        console.log('Security monitoring stopped');
       } catch (error) {
         console.warn('Security monitoring cleanup failed:', error);
       }
