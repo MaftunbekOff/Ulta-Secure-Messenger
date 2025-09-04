@@ -6,6 +6,12 @@ interface CachedMessage {
   chatId: string;
 }
 
+interface CacheMetadata {
+  lastUpdated: number;
+  size: number;
+  compressed: boolean;
+}
+
 // Message caching with offline support and slow connection optimization
 class MessageCache {
   private cache = new Map<string, CachedMessage[]>();
@@ -177,13 +183,6 @@ class MessageCache {
   getStats(): Map<string, CacheMetadata> {
     return this.metadata;
   }
-}
-
-// Interface for cache metadata
-interface CacheMetadata {
-  lastUpdated: number;
-  size: number;
-  compressed: boolean;
 }
 
 export const messageCache = new MessageCache();

@@ -46,15 +46,18 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
-	ReadBufferSize:  1024 * 4,
-	WriteBufferSize: 1024 * 4,
+	ReadBufferSize:  1024 * 8,  // 8KB for faster reading
+	WriteBufferSize: 1024 * 8,  // 8KB for faster writing
+	EnableCompression: true,     // Enable compression for speed
+	HandshakeTimeout: 5 * time.Second, // Fast handshake
 }
 
 const (
-	writeWait      = 10 * time.Second
-	pongWait       = 60 * time.Second
-	pingPeriod     = (pongWait * 9) / 10
-	maxMessageSize = 512 * 1024
+	writeWait      = 2 * time.Second   // Faster write timeout
+	pongWait       = 30 * time.Second  // Reduced for faster detection
+	pingPeriod     = (pongWait * 8) / 10 // More frequent pings
+	maxMessageSize = 1024 * 1024       // 1MB for larger messages
+	bufferSize     = 4096             // Larger buffer for speed
 )
 
 func newHub() *Hub {
