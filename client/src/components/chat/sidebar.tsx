@@ -218,19 +218,36 @@ export default function Sidebar({ selectedChatId, onSelectChat, isMobile = false
     setSearchTimeout(newTimeout);
   };
 
-  const { data: chats = [], isLoading } = useQuery({
+  const { data: chats = [], isLoading, error } = useQuery({
     queryKey: ["/api/chats"],
     queryFn: async (): Promise<ChatWithExtras[]> => {
-      const response = await fetch("/api/chats", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
+      try {
+        const response = await fetch("/api/chats", {
+          headers: getAuthHeaders(),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch chats: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        // Validate and ensure proper structure
+        return Array.isArray(data) ? data.map(chat => ({
+          ...chat,
+          otherUser: chat.otherUser || null,
+          lastMessage: chat.lastMessage || null,
+          unreadCount: chat.unreadCount || 0
+        })) : [];
+      } catch (error) {
+        console.error("Chat fetch error:", error);
+        throw error;
       }
-      return response.json();
     },
     staleTime: 15000, // 15 seconds for chat list
     gcTime: 300000, // 5 minutes cache
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   // Decrypt message previews when chats change
@@ -361,26 +378,55 @@ export default function Sidebar({ selectedChatId, onSelectChat, isMobile = false
       if (chat.isGroup) {
         return chat.name || "Group Chat";
       }
-      return chat.otherUser?.firstName && chat.otherUser?.lastName 
-        ? `${chat.otherUser.firstName} ${chat.otherUser.lastName}`
-        : chat.otherUser?.username || "Unknown User";
+      
+      // Check if otherUser exists and has proper data
+      if (!chat.otherUser) {
+        return "Loading...";
+      }
+      
+      // Try to get full name first
+      if (chat.otherUser.firstName && chat.otherUser.lastName) {
+        return `${chat.otherUser.firstName} ${chat.otherUser.lastName}`;
+      }
+      
+      // Fall back to username
+      if (chat.otherUser.username) {
+        return chat.otherUser.username;
+      }
+      
+      // Last resort - show user ID or placeholder
+      return chat.otherUser.id ? `User ${chat.otherUser.id.slice(0, 8)}` : "Unknown User";
     },
 
     getChatAvatar: (chat: ChatWithExtras) => {
       if (chat.isGroup) {
         return null;
       }
-      return chat.otherUser?.profileImageUrl;
+      return chat.otherUser?.profileImageUrl || undefined;
     },
 
     getChatInitials: (chat: ChatWithExtras) => {
       if (chat.isGroup) {
         return chat.name?.charAt(0).toUpperCase() || "G";
       }
-      const avatarText = chat.otherUser?.username?.charAt(0).toUpperCase() || "?";
-      return avatarText;
+      
+      if (!chat.otherUser) {
+        return "?";
+      }
+      
+      // Try to get initials from full name
+      if (chat.otherUser.firstName) {
+        return chat.otherUser.firstName.charAt(0).toUpperCase();
+      }
+      
+      // Fall back to username initial
+      if (chat.otherUser.username) {
+        return chat.otherUser.username.charAt(0).toUpperCase();
+      }
+      
+      return "U";
     }
-  }), [user?.id]);
+  }), []);
 
   // Search functionality with proper cleanup
   useEffect(() => {
@@ -413,8 +459,22 @@ export default function Sidebar({ selectedChatId, onSelectChat, isMobile = false
 
   if (isLoading) {
     return (
-      <div className="w-80 bg-card border-r border-border flex items-center justify-center">
+      <div className={`${isMobile ? 'w-full' : 'w-80'} bg-card border-r border-border flex items-center justify-center`}>
         <div className="text-muted-foreground">Loading chats...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={`${isMobile ? 'w-full' : 'w-80'} bg-card border-r border-border flex flex-col items-center justify-center p-4`}>
+        <div className="text-destructive text-center mb-2">Failed to load chats</div>
+        <button 
+          onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/chats"] })}
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          Try again
+        </button>
       </div>
     );
   }
