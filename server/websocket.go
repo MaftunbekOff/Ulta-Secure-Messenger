@@ -139,6 +139,61 @@ func newHub() *Hub {
 	}
 }
 
+// Simple ultra protocol and cache placeholders
+type UltraProtocol struct {
+	key []byte
+}
+
+type UltraMessage struct {
+	Type      uint8
+	Sequence  uint32
+	Timestamp uint64
+	Data      []byte
+	Length    uint32
+}
+
+type UltraCache struct {
+	data map[string]interface{}
+	mutex sync.RWMutex
+}
+
+func NewUltraProtocol(key []byte) (*UltraProtocol, error) {
+	return &UltraProtocol{key: key}, nil
+}
+
+func NewUltraCache(sizeMB int) *UltraCache {
+	return &UltraCache{
+		data: make(map[string]interface{}),
+	}
+}
+
+func (c *UltraCache) Get(key string) (interface{}, bool) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	val, ok := c.data[key]
+	return val, ok
+}
+
+func (c *UltraCache) Set(key string, value interface{}, duration time.Duration) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.data[key] = value
+}
+
+func (p *UltraProtocol) Encode(msg *UltraMessage) ([]byte, error) {
+	return msg.Data, nil
+}
+
+func (p *UltraProtocol) Decode(data []byte) (*UltraMessage, error) {
+	return &UltraMessage{
+		Type:      1,
+		Sequence:  1,
+		Timestamp: uint64(time.Now().UnixNano()),
+		Data:      data,
+		Length:    uint32(len(data)),
+	}, nil
+}
+
 // Initialize ultra protocol and cache
 var ultraProtocol, _ = NewUltraProtocol([]byte("ultrasecure-key-2024-advanced"))
 var ultraCache = NewUltraCache(512) // 512MB cache
