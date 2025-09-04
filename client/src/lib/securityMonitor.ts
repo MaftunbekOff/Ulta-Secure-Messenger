@@ -153,8 +153,8 @@ export class SecurityMonitor {
       }
     } catch (error) {
       // Faqat muhim xatolarni log qilish
-      if (process.env.NODE_ENV === 'production') {
-        console.warn('Security check failed:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('Security check minor issue:', error?.message || 'Unknown');
       }
     }
 

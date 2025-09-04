@@ -42,6 +42,25 @@ export function useWebSocket() {
     return indicator;
   };
 
+  const getWebSocketUrl = () => {
+    if (typeof window === 'undefined') return 'ws://localhost:8080/ws';
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+
+    // Replit uchun maxsus URL
+    if (window.location.hostname.includes('replit.dev')) {
+      return `wss://${window.location.hostname}/ws`;
+    }
+
+    // Development rejimi
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return `${protocol}//localhost:8080/ws`;
+    }
+
+    // Production
+    return `${protocol}//${window.location.hostname}/ws`;
+  };
+
 
   const connectWebSocket = useCallback(() => {
     if (isConnecting || socket?.readyState === WebSocket.OPEN) {
@@ -51,22 +70,7 @@ export function useWebSocket() {
     setIsConnecting(true);
 
     try {
-      // Replit environment WebSocket URL configuration
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.hostname;
-
-      // Auto-detect Replit environment and set correct port
-      let wsUrl;
-      if (host.includes('replit.dev') || host.includes('replit.co') || host.includes('replit.app')) {
-        // Replit production environment - use same host with /ws path
-        wsUrl = `${protocol}//${host}/ws`;
-      } else if (host === 'localhost' || host === '127.0.0.1') {
-        // Local development - use port 8080
-        wsUrl = `ws://${host}:8080/ws`;
-      } else {
-        // Other environments
-        wsUrl = `${protocol}//${host}:8080/ws`;
-      }
+      const wsUrl = getWebSocketUrl();
 
       console.log('🔗 Connecting to WebSocket:', wsUrl);
 
