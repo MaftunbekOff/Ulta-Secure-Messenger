@@ -1,0 +1,12 @@
+/home/runner/workspace/target/release/deps/spki-d6c15c1de0a80a9f.d: /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/lib.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/algorithm.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/error.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/spki.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/traits.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/../README.md
+
+/home/runner/workspace/target/release/deps/libspki-d6c15c1de0a80a9f.rlib: /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/lib.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/algorithm.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/error.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/spki.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/traits.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/../README.md
+
+/home/runner/workspace/target/release/deps/libspki-d6c15c1de0a80a9f.rmeta: /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/lib.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/algorithm.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/error.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/spki.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/traits.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/../README.md
+
+/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/lib.rs:
+/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/algorithm.rs:
+/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/error.rs:
+/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/spki.rs:
+/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/traits.rs:
+/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/spki-0.7.3/src/../README.md:
