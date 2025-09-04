@@ -536,19 +536,29 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async getChatMessages(chatId: string, limit: number = 50, offset: number = 0): Promise<any[]> {
+  async getChatMessages(chatId: string, limit: number = 50, offset: number = 0): Promise<Array<Message & { sender: User }>> {
     try {
-      // Ultra-optimized query with specific fields only
+      // Ultra-optimized query with sender information
       const messagesResult = await db
         .select({
           id: messages.id,
           content: messages.content,
           senderId: messages.senderId,
+          chatId: messages.chatId,
           createdAt: messages.createdAt,
           isEncrypted: messages.isEncrypted,
-          messageType: messages.messageType
+          messageType: messages.messageType,
+          editedAt: messages.editedAt,
+          sender: {
+            id: users.id,
+            username: users.username,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            profileImageUrl: users.profileImageUrl
+          }
         })
         .from(messages)
+        .innerJoin(users, eq(messages.senderId, users.id))
         .where(eq(messages.chatId, chatId))
         .orderBy(desc(messages.createdAt))
         .limit(Math.min(limit, 100)) // Cap at 100 for performance
