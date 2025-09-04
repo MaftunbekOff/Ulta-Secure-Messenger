@@ -39,6 +39,6 @@ export default defineConfig({
       clientPort: process.env.NODE_ENV === 'production' ? 443 : 5000,
     },
     host: '0.0.0.0',
-    port: 3000, // Frontend dev server port
+    port: 5000, // Frontend dev server port
   },
 });
