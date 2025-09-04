@@ -117,8 +117,7 @@ export const MessageBubble = ({ message, isOwn, senderName, senderAvatar }: Mess
   );
 }
 
-export default MessageBubble;
-import React from 'react';
+export { MessageBubble };
 import { cn } from '@/lib/utils';
 
 interface MessageBubbleProps {
@@ -169,3 +168,5 @@ export function MessageBubble({ message, isOwn, senderName }: MessageBubbleProps
     </div>
   );
 }
+
+export default MessageBubble;
