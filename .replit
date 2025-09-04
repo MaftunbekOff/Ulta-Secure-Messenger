@@ -639,15 +639,15 @@ mode = "parallel"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "echo \"🚀 Starting complete polyglot stack...\""
+args = "echo \"🚀 Starting UltraSecure Messenger...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "echo \"🌐 Starting Go WebSocket on port 8080...\""
+args = "echo \"⚡ Starting React frontend on port 5000...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "WS_PORT=8080 go run server/websocket.go &"
+args = "npm run dev &"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
@@ -655,11 +655,15 @@ args = "sleep 3"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "echo \"⚡ Starting Node.js development server...\""
+args = "echo \"🌐 Starting Go WebSocket server on port 8080...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev"
+args = "export WS_PORT=8080"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go run server/websocket.go"
 
 [[workflows.workflow]]
 name = "Complete UltraSecure Stack"
