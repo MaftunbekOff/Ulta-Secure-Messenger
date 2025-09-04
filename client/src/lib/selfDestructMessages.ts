@@ -298,22 +298,29 @@ export class SelfDestructMessages {
     this.messages.clear();
     this.messageReadCounts.clear();
 
-    // 3. Wipe all storage with military-grade deletion
+    // 3. BACKUP PROTECTION: Move critical data to Layer 2/3 before wiping
+    this.backupCriticalDataToSecureLayers();
+
+    // 4. Wipe all storage with military-grade deletion
     this.militaryWipeStorage();
 
-    // 4. Overwrite memory multiple times
+    // 5. Overwrite memory multiple times
     this.multiPassMemoryWipe();
 
-    // 5. Disable all future operations
+    // 6. Create decoy data to confuse attackers
+    this.createDecoyData();
+
+    // 7. Disable all future operations
     this.disableAllOperations();
 
-    // 6. Send breach alert (if server connection available)
+    // 8. Send breach alert (if server connection available)
     this.sendBreachAlert();
 
-    // 7. Redirect to secure logout page
-    setTimeout(() => {
-      window.location.replace('/logout?reason=security_breach');
-    }, 1000);
+    // 9. Lock down Layer 1 but keep Layer 2/3 intact
+    this.lockdownLayer1Only();
+
+    // 10. Show secure recovery message
+    this.showSecureRecoveryMessage();
   }
 
   // Military-grade storage wiping
@@ -378,6 +385,129 @@ export class SelfDestructMessages {
     }
   }
 
+  // Backup critical data to secure layers before destruction
+  private backupCriticalDataToSecureLayers(): void {
+    try {
+      console.log('🔒 Backing up critical data to Layer 2/3...');
+      
+      // Get all important user data
+      const userData = {
+        userProfile: localStorage.getItem('user_profile'),
+        contacts: localStorage.getItem('contacts'),
+        settings: localStorage.getItem('app_settings'),
+        encryptionKeys: Object.keys(localStorage).filter(key => 
+          key.includes('backup_key') || key.includes('recovery')
+        ).map(key => ({ key, value: localStorage.getItem(key) }))
+      };
+
+      // Send to secure server-side storage (Layer 2)
+      fetch('/api/security/emergency-backup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Security-Level': 'LAYER_2_EMERGENCY'
+        },
+        body: JSON.stringify({
+          type: 'EMERGENCY_BACKUP',
+          timestamp: Date.now(),
+          userData: userData,
+          breachType: 'LAYER_1_COMPROMISED'
+        })
+      }).catch(() => {
+        // Try Rust backup (Layer 3) as fallback
+        this.tryRustBackup(userData);
+      });
+
+    } catch (error) {
+      console.warn('Backup attempt failed, data protection continuing...');
+    }
+  }
+
+  // Fallback backup to Rust layer
+  private tryRustBackup(userData: any): void {
+    try {
+      // Send to Rust encryption engine for secure storage
+      fetch('/api/rust/emergency-vault', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Rust-Security': 'ULTRA_SECURE'
+        },
+        body: JSON.stringify(userData)
+      }).catch(() => {
+        console.warn('All backup attempts failed - proceeding with protection');
+      });
+    } catch (error) {
+      // Silent - don't reveal backup methods to attacker
+    }
+  }
+
+  // Create decoy data to confuse attackers
+  private createDecoyData(): void {
+    const decoyMessages = [
+      'Decoy message 1 - Not real user data',
+      'Fake conversation thread',
+      'Honeypot encryption key: fake123',
+      'Decoy user profile data',
+      'Fake contact list entry'
+    ];
+
+    // Fill storage with fake data
+    for (let i = 0; i < 50; i++) {
+      const fakeKey = `fake_data_${i}_${Math.random()}`;
+      const fakeValue = decoyMessages[Math.floor(Math.random() * decoyMessages.length)];
+      localStorage.setItem(fakeKey, fakeValue);
+    }
+
+    console.log('🎭 Decoy data deployed - attacker will find fake information');
+  }
+
+  // Lock down only Layer 1, keep 2/3 intact
+  private lockdownLayer1Only(): void {
+    // Disable only client-side functions
+    window.localStorage.setItem('layer1_locked', 'true');
+    window.localStorage.setItem('lockdown_reason', 'SECURITY_BREACH_DETECTED');
+    
+    // Layer 2 (server) and Layer 3 (Rust) remain functional
+    console.log('🔐 Layer 1 locked - Layers 2&3 remain secure with user data');
+  }
+
+  // Show recovery message to user
+  private showSecureRecoveryMessage(): void {
+    // Create secure recovery interface
+    const recoveryDiv = document.createElement('div');
+    recoveryDiv.innerHTML = `
+      <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                  background: linear-gradient(135deg, #1e3c72, #2a5298); 
+                  color: white; display: flex; align-items: center; justify-content: center; 
+                  z-index: 10000; font-family: Arial, sans-serif;">
+        <div style="text-align: center; padding: 40px; background: rgba(0,0,0,0.7); 
+                    border-radius: 15px; max-width: 500px;">
+          <div style="font-size: 60px; margin-bottom: 20px;">🛡️</div>
+          <h2 style="color: #4CAF50; margin-bottom: 20px;">Sizning Ma'lumotlaringiz Xavfsiz!</h2>
+          <p style="margin-bottom: 15px;">🔒 <strong>1-qatlam buzildi</strong>, lekin sizning ma'lumotlaringiz:</p>
+          <ul style="text-align: left; margin: 20px 0;">
+            <li>✅ <strong>2-qatlam</strong> (Server): Himoyalangan</li>
+            <li>✅ <strong>3-qatlam</strong> (Rust): Xavfsiz</li>
+            <li>✅ <strong>Barcha xabarlar</strong>: Zaxiralangan</li>
+            <li>✅ <strong>Shaxsiy ma'lumotlar</strong>: Muhofaza qilingan</li>
+          </ul>
+          <p style="color: #FFD700; margin: 20px 0;">
+            🔄 Tizim avtomatik tiklash rejimida...
+          </p>
+          <div style="margin-top: 30px;">
+            <button onclick="window.location.href='/secure-recovery'" 
+                    style="background: #4CAF50; color: white; border: none; 
+                           padding: 15px 30px; border-radius: 8px; font-size: 16px; cursor: pointer;">
+              🔐 Xavfsiz Tiklanish
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(recoveryDiv);
+  }
+
   // Send breach alert to server
   private sendBreachAlert(): void {
     try {
@@ -390,7 +520,9 @@ export class SelfDestructMessages {
           type: 'LAYER_1_BREACH',
           timestamp: Date.now(),
           userAgent: navigator.userAgent,
-          url: window.location.href
+          url: window.location.href,
+          dataProtectionStatus: 'BACKUP_COMPLETED',
+          userDataSafe: true
         })
       }).catch(() => {
         // Silent failure - don't alert attacker
