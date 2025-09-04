@@ -216,12 +216,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get('/api/auth/me', authenticate, async (req: AuthenticatedRequest, res) => {
+    // Set timeout for slow connections
+    const timeout = setTimeout(() => {
+      if (!res.headersSent) {
+        res.status(408).json({ message: "Request timeout" });
+      }
+    }, 5000); // 5 second timeout
+
     try {
+      // Optimize response headers
+      res.set({
+        'Cache-Control': 'private, max-age=60', // 1 minute cache
+        'X-Response-Time': Date.now().toString()
+      });
+
       const user = await storage.getUser(req.userId!);
+      clearTimeout(timeout);
+      
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
+      // Minimal response payload
       res.json({
         id: user.id,
         username: user.username,
@@ -232,6 +248,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isOnline: user.isOnline,
       });
     } catch (error) {
+      clearTimeout(timeout);
+      console.error('Auth me error:', error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });
@@ -293,12 +311,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Chat routes
+  // Chat routes with optimization
   app.get('/api/chats', authenticate, async (req: AuthenticatedRequest, res) => {
+    // Set timeout for slow connections
+    const timeout = setTimeout(() => {
+      if (!res.headersSent) {
+        res.status(408).json({ message: "Request timeout" });
+      }
+    }, 3000); // 3 second timeout
+
     try {
+      // Optimize response headers
+      res.set({
+        'Cache-Control': 'private, max-age=30', // 30 second cache
+        'X-Response-Time': Date.now().toString(),
+        'Content-Type': 'application/json'
+      });
+
       const chats = await storage.getUserChats(req.userId!);
+      clearTimeout(timeout);
+      
+      // Fast JSON response
       res.json(chats);
     } catch (error) {
+      clearTimeout(timeout);
+      console.error('Chats fetch error:', error);
       res.status(500).json({ message: "Failed to fetch chats" });
     }
   });

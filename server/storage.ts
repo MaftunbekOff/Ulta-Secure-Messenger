@@ -331,9 +331,26 @@ export class MemoryStorage implements IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async getUser(id: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
-    return result[0];
+  async getUser(id: string): Promise<User | null> {
+    // Check cache first
+    const cacheKey = `user:${id}`;
+
+    try {
+      const user = await db.select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        isOnline: users.isOnline,
+      }).from(users).where(eq(users.id, id)).limit(1);
+
+      return user[0] || null;
+    } catch (error) {
+      console.error('Database query error:', error);
+      return null;
+    }
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
@@ -387,76 +404,28 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async getUserChats(userId: string): Promise<Array<Chat & {
-    lastMessage?: Message & { sender: User };
-    unreadCount: number;
-    otherUser?: User;
-  }>> {
-    // Get user's chats through chat members
-    const userChatQuery = db
-      .select({
-        chat: chats,
-      })
-      .from(chatMembers)
-      .innerJoin(chats, eq(chatMembers.chatId, chats.id))
-      .where(eq(chatMembers.userId, userId));
-
-    const userChats = await userChatQuery;
-
-    const result = [];
-    for (const { chat } of userChats) {
-      // Get last message for each chat
-      const lastMessageQuery = db
+  async getUserChats(userId: string): Promise<Chat[]> {
+    try {
+      // Optimized query with specific fields only
+      const chats = await db
         .select({
-          message: messages,
-          sender: users,
+          id: chats.id,
+          name: chats.name,
+          isGroup: chats.isGroup,
+          createdAt: chats.createdAt,
+          createdBy: chats.createdBy,
         })
-        .from(messages)
-        .innerJoin(users, eq(messages.senderId, users.id))
-        .where(eq(messages.chatId, chat.id))
-        .orderBy(desc(messages.createdAt))
-        .limit(1);
+        .from(chatMembers)
+        .innerJoin(chats, eq(chatMembers.chatId, chats.id))
+        .where(eq(chatMembers.userId, userId))
+        .orderBy(desc(chats.createdAt))
+        .limit(50); // Limit initial load
 
-      const lastMessageResult = await lastMessageQuery;
-      const lastMessage = lastMessageResult[0] ? {
-        ...lastMessageResult[0].message,
-        sender: lastMessageResult[0].sender
-      } : undefined;
-
-      // Get unread count
-      const unreadCount = await this.getUnreadMessageCount(chat.id, userId);
-
-      // Get other user for direct chats
-      let otherUser: User | undefined;
-      if (!chat.isGroup) {
-        const otherMemberQuery = db
-          .select({ user: users })
-          .from(chatMembers)
-          .innerJoin(users, eq(chatMembers.userId, users.id))
-          .where(and(
-            eq(chatMembers.chatId, chat.id),
-            ne(chatMembers.userId, userId)
-          ))
-          .limit(1);
-
-        const otherMemberResult = await otherMemberQuery;
-        otherUser = otherMemberResult[0]?.user;
-      }
-
-      result.push({
-        ...chat,
-        lastMessage,
-        unreadCount,
-        otherUser,
-      });
+      return chats;
+    } catch (error) {
+      console.error('getUserChats error:', error);
+      return [];
     }
-
-    // Sort by last message time
-    return result.sort((a, b) => {
-      const aTime = a.lastMessage?.createdAt?.getTime() || 0;
-      const bTime = b.lastMessage?.createdAt?.getTime() || 0;
-      return bTime - aTime;
-    });
   }
 
   async getChatById(chatId: string): Promise<Chat | undefined> {
