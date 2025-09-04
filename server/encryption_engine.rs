@@ -1,4 +1,3 @@
-
 use aes_gcm::{
     aead::{Aead, AeadCore, KeyInit, OsRng},
     Aes256Gcm, Nonce, Key
@@ -153,22 +152,38 @@ impl RustEncryptionEngine {
     }
 
     // Benchmark encryption performance
-    pub fn benchmark(&self) -> Result<(), EncryptionError> {
-        let (private_key, public_key) = self.generate_rsa_keypair()?;
-        let test_message = "Performance test message for Rust encryption engine";
+    pub fn benchmark(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let message = "Benchmark test message for performance comparison";
+        let iterations = 100;
 
+        // Generate keypair once for all iterations
+        let (private_key, public_key) = self.generate_rsa_keypair()?;
+
+        // Benchmark encryption
         let start = std::time::Instant::now();
-        let encrypted = self.encrypt_message(test_message, &public_key)?;
+        let mut encrypted_messages = Vec::new();
+        for i in 0..iterations {
+            let test_msg = format!("{} {}", message, i);
+            let encrypted = self.encrypt_message(&test_msg, &public_key)?;
+            encrypted_messages.push(encrypted);
+        }
         let encrypt_time = start.elapsed();
 
+        // Benchmark decryption
         let start = std::time::Instant::now();
-        let _decrypted = self.decrypt_message(&encrypted, &private_key)?;
+        for encrypted in &encrypted_messages {
+            let _decrypted = self.decrypt_message(encrypted, &private_key)?;
+        }
         let decrypt_time = start.elapsed();
 
-        println!("🦀 Rust Encryption Benchmark:");
-        println!("  Encryption: {:?}", encrypt_time);
-        println!("  Decryption: {:?}", decrypt_time);
-        println!("  Total: {:?}", encrypt_time + decrypt_time);
+        let total_time = encrypt_time + decrypt_time;
+        let total_ms = total_time.as_secs_f64() * 1000.0;
+
+        println!("🦀 Rust Encryption Benchmark ({} iterations):", iterations);
+        println!("  Encryption: {:.2}ms", encrypt_time.as_secs_f64() * 1000.0);
+        println!("  Decryption: {:.2}ms", decrypt_time.as_secs_f64() * 1000.0);
+        println!("  Total: {:.2}ms", total_ms);
+        println!("  Average per operation: {:.2}ms", total_ms / (iterations as f64 * 2.0));
 
         Ok(())
     }
@@ -195,11 +210,11 @@ mod tests {
     fn test_encryption_decryption() {
         let engine = RustEncryptionEngine::new();
         let (private_key, public_key) = engine.generate_rsa_keypair().unwrap();
-        
+
         let message = "Test message for Rust encryption";
         let encrypted = engine.encrypt_message(message, &public_key).unwrap();
         let decrypted = engine.decrypt_message(&encrypted, &private_key).unwrap();
-        
+
         assert_eq!(message, decrypted);
     }
 
