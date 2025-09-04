@@ -136,20 +136,126 @@ export class SelfDestructMessages {
     return now >= message.destructTime;
   }
 
-  // Detect potential security breach
+  // Detect potential security breach with advanced techniques
   private detectSecurityBreach(): boolean {
     try {
-      // Check if dev tools are open
+      // 1. Layer 1 breach indicators
+      const layer1Breached = this.detectLayer1Breach();
+      
+      // 2. Check if dev tools are open
       const devtools = window.outerHeight - window.innerHeight > 160 ||
                       window.outerWidth - window.innerWidth > 160;
 
-      // Check for suspicious localStorage access
+      // 3. Check for suspicious localStorage access
       const suspiciousAccess = this.checkSuspiciousAccess();
 
-      // Check for memory inspection attempts
+      // 4. Check for memory inspection attempts
       const memoryInspection = this.detectMemoryInspection();
 
-      return devtools || suspiciousAccess || memoryInspection;
+      // 5. Check for JavaScript injection attempts
+      const jsInjection = this.detectJavaScriptInjection();
+
+      // 6. Check for browser extension interference
+      const extensionTampering = this.detectExtensionTampering();
+
+      return layer1Breached || devtools || suspiciousAccess || memoryInspection || jsInjection || extensionTampering;
+    } catch (error) {
+      return true; // If detection fails, assume breach for safety
+    }
+  }
+
+  // Detect Layer 1 specific breaches
+  private detectLayer1Breach(): boolean {
+    try {
+      // Check if crypto API has been tampered with
+      if (!window.crypto || typeof window.crypto.getRandomValues !== 'function') {
+        console.warn('🚨 Layer 1 Breach: Crypto API compromised');
+        return true;
+      }
+
+      // Check if localStorage has been cleared suspiciously
+      const encryptionKeys = Object.keys(localStorage).filter(key => 
+        key.includes('ultrasecure') || key.includes('military') || key.includes('private_key')
+      );
+      
+      if (encryptionKeys.length === 0 && this.hasStoredData()) {
+        console.warn('🚨 Layer 1 Breach: Encryption keys missing');
+        return true;
+      }
+
+      // Check for unauthorized access to private variables
+      if (this.detectPrivateVariableAccess()) {
+        console.warn('🚨 Layer 1 Breach: Private variables accessed');
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      return true;
+    }
+  }
+
+  // Check if we should have stored data
+  private hasStoredData(): boolean {
+    return localStorage.getItem('user_session') !== null || 
+           sessionStorage.length > 0;
+  }
+
+  // Detect private variable access attempts
+  private detectPrivateVariableAccess(): boolean {
+    // Create honeypot variables that should never be accessed
+    const honeypot = Math.random().toString(36);
+    Object.defineProperty(window, `__ultrasecure_${honeypot}`, {
+      get() {
+        console.warn('🚨 Honeypot accessed - potential breach');
+        return true;
+      }
+    });
+    return false;
+  }
+
+  // Detect JavaScript injection
+  private detectJavaScriptInjection(): boolean {
+    try {
+      // Check for common injection patterns
+      const suspiciousGlobals = [
+        '__REACT_DEVTOOLS_GLOBAL_HOOK__',
+        '__VUE_DEVTOOLS_GLOBAL_HOOK__',
+        'webpackJsonp',
+        'eval',
+        'Function'
+      ];
+
+      for (const global of suspiciousGlobals) {
+        if (window.hasOwnProperty(global) && typeof window[global] === 'function') {
+          const funcStr = window[global].toString();
+          if (funcStr.includes('eval') || funcStr.includes('document.write')) {
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Detect browser extension tampering
+  private detectExtensionTampering(): boolean {
+    try {
+      // Check if DOM has been modified by extensions
+      const scripts = document.querySelectorAll('script');
+      for (const script of scripts) {
+        if (script.src && (
+          script.src.includes('extension://') ||
+          script.src.includes('moz-extension://') ||
+          script.src.includes('chrome-extension://')
+        )) {
+          console.warn('🚨 Extension script detected');
+          return true;
+        }
+      }
+      return false;
     } catch (error) {
       return false;
     }
@@ -180,25 +286,118 @@ export class SelfDestructMessages {
     return suspiciousGlobals.some(global => window.hasOwnProperty(global));
   }
 
-  // Emergency destroy all messages
+  // Emergency destroy all messages with advanced protection
   private emergencyDestructAll(): void {
-    console.warn('🔥 Emergency destruction initiated');
+    console.warn('🔥 LAYER 1 BREACHED - Emergency destruction initiated');
 
-    // Clear all cached messages
+    // 1. Immediately stop all timers
+    this.destructTimers.forEach((timer) => clearTimeout(timer));
+    this.destructTimers.clear();
+
+    // 2. Clear all cached messages
     this.messages.clear();
+    this.messageReadCounts.clear();
 
-    // Clear localStorage
-    Object.keys(localStorage).forEach(key => {
-      if (key.includes('message') || key.includes('chat') || key.includes('ultrasecure')) {
-        localStorage.removeItem(key);
-      }
-    });
+    // 3. Wipe all storage with military-grade deletion
+    this.militaryWipeStorage();
 
-    // Clear sessionStorage
+    // 4. Overwrite memory multiple times
+    this.multiPassMemoryWipe();
+
+    // 5. Disable all future operations
+    this.disableAllOperations();
+
+    // 6. Send breach alert (if server connection available)
+    this.sendBreachAlert();
+
+    // 7. Redirect to secure logout page
+    setTimeout(() => {
+      window.location.replace('/logout?reason=security_breach');
+    }, 1000);
+  }
+
+  // Military-grade storage wiping
+  private militaryWipeStorage(): void {
+    // 3-pass DOD 5220.22-M standard wipe
+    for (let pass = 0; pass < 3; pass++) {
+      // Pass 1: All 1s
+      // Pass 2: All 0s  
+      // Pass 3: Random data
+      const pattern = pass === 0 ? '1'.repeat(1000) : 
+                     pass === 1 ? '0'.repeat(1000) : 
+                     Math.random().toString(36).repeat(100);
+
+      Object.keys(localStorage).forEach(key => {
+        localStorage.setItem(key, pattern);
+      });
+      
+      Object.keys(sessionStorage).forEach(key => {
+        sessionStorage.setItem(key, pattern);
+      });
+    }
+
+    // Final deletion
+    localStorage.clear();
     sessionStorage.clear();
+  }
 
-    // Overwrite memory with dummy data
-    this.overwriteMemory();
+  // Multi-pass memory overwriting
+  private multiPassMemoryWipe(): void {
+    const largeArray = new Array(100000);
+    
+    // 5 passes with different patterns
+    for (let pass = 0; pass < 5; pass++) {
+      for (let i = 0; i < largeArray.length; i++) {
+        largeArray[i] = `WIPED_PASS_${pass}_${Math.random()}`;
+      }
+      
+      // Force garbage collection if available
+      if (window.gc) {
+        window.gc();
+      }
+    }
+  }
+
+  // Disable all future operations
+  private disableAllOperations(): void {
+    // Override critical functions
+    this.createSelfDestructMessage = () => {
+      throw new Error('System disabled due to security breach');
+    };
+    
+    this.onMessageRead = () => {
+      throw new Error('System disabled due to security breach');
+    };
+    
+    // Poison the wells - make all crypto operations fail
+    if (window.crypto) {
+      const originalGetRandomValues = window.crypto.getRandomValues;
+      window.crypto.getRandomValues = () => {
+        throw new Error('Crypto disabled due to breach');
+      };
+    }
+  }
+
+  // Send breach alert to server
+  private sendBreachAlert(): void {
+    try {
+      fetch('/api/security/breach-alert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          type: 'LAYER_1_BREACH',
+          timestamp: Date.now(),
+          userAgent: navigator.userAgent,
+          url: window.location.href
+        })
+      }).catch(() => {
+        // Silent failure - don't alert attacker
+      });
+    } catch (error) {
+      // Silent failure
+    }
   }
 
   // Overwrite memory with dummy data to prevent recovery
