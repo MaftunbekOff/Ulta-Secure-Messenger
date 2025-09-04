@@ -211,5 +211,18 @@ args = "rustup default stable"
 task = "shell.exec"
 args = "npm run dev"
 
+[[workflows.workflow]]
+name = "Go WebSocket Test"
+author = 45696961
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go mod download"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go run server/websocket.go"
+
 [agent]
 expertMode = true
