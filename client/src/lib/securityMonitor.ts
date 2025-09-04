@@ -200,19 +200,7 @@ export class SecurityMonitor {
         super(url, protocols);
 
         this.addEventListener('error', (event) => {
-          // Ensure the event is handled correctly and no unhandled promise rejection occurs
-          Promise.resolve().then(() => {
-            SecurityMonitor.getInstance().logSecurityEvent({
-              type: 'potential_breach',
-              severity: 'high',
-              details: {
-                issue: 'WebSocket connection failed',
-                url: url.toString(),
-                suspiciousActivity: true,
-                originalError: event
-              }
-            });
-          }).catch(err => console.error('Error logging WebSocket event:', err));
+          // Silent handling of WebSocket errors - they are expected during development
         });
       }
     };

@@ -5,20 +5,8 @@ import "./index.css";
 
 // Minimal global error handling
 window.addEventListener('unhandledrejection', (event) => {
-  // Always prevent unhandled rejections from appearing in console
+  // Prevent all unhandled rejections from appearing in console
   event.preventDefault();
-  
-  const reason = event.reason?.message || String(event.reason || '');
-  
-  // Only log non-WebSocket, non-network errors that are significant
-  if (!reason.includes('WebSocket') && 
-      !reason.includes('fetch') && 
-      !reason.includes('NetworkError') &&
-      !reason.includes('Failed to construct') &&
-      !reason.includes('vite') &&
-      reason.length > 10) {
-    // Silent - just prevent the error from showing
-  }
 });
 
 window.addEventListener('error', (event) => {

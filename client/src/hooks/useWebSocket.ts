@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState, useCallback } from "react";
 import { getAuthToken } from "@/lib/authUtils";
 
@@ -21,31 +22,106 @@ interface WebSocketMessage {
 export function useWebSocket() {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const { token } = useAuth();
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const connectionAttemptRef = useRef<boolean>(false);
-  const maxReconnectAttempts = 3;
+  const maxReconnectAttempts = 5;
 
   const connectWebSocket = useCallback(async () => {
-    // WebSocket disabled - using HTTP polling for better stability
-    console.log('WebSocket disabled, using HTTP polling');
-    return;
-  }, []);
+    if (!token || connectionAttemptRef.current) {
+      return;
+    }
 
-  // Dummy function to maintain compatibility
-  const dummyTimeout = useCallback(() => {
-  }, []);
+    connectionAttemptRef.current = true;
 
+    try {
+      // Clear any existing timeout
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+
+      // Close existing connection if any
+      if (socket) {
+        socket.close();
+        setSocket(null);
+      }
+
+      // Use the correct WebSocket URL for the current environment
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const wsUrl = `${protocol}//${host}/ws`;
+
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        setIsConnected(true);
+        setReconnectAttempts(0);
+        connectionAttemptRef.current = false;
+        
+        // Send authentication token immediately
+        ws.send(JSON.stringify({
+          type: 'authenticate',
+          token: token,
+          timestamp: new Date().toISOString()
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message: WebSocketMessage = JSON.parse(event.data);
+          setLastMessage(message);
+        } catch (error) {
+          console.warn('Failed to parse WebSocket message:', event.data);
+        }
+      };
+
+      ws.onclose = (event) => {
+        setIsConnected(false);
+        setSocket(null);
+        connectionAttemptRef.current = false;
+
+        // Only attempt reconnect if it wasn't a manual close and we haven't exceeded max attempts
+        if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts && token) {
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+          
+          reconnectTimeoutRef.current = setTimeout(() => {
+            setReconnectAttempts(prev => prev + 1);
+            connectWebSocket();
+          }, delay);
+        }
+      };
+
+      ws.onerror = () => {
+        setIsConnected(false);
+        connectionAttemptRef.current = false;
+      };
+
+      setSocket(ws);
+
+    } catch (error) {
+      connectionAttemptRef.current = false;
+      setIsConnected(false);
+      
+      // Retry with exponential backoff
+      if (reconnectAttempts < maxReconnectAttempts) {
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+        reconnectTimeoutRef.current = setTimeout(() => {
+          setReconnectAttempts(prev => prev + 1);
+          connectWebSocket();
+        }, delay);
+      }
+    }
+  }, [token, socket, reconnectAttempts]);
 
   useEffect(() => {
-    // Only connect if we have a token and no active connection
-    if (token && !socket) {
+    if (token && !socket && !connectionAttemptRef.current) {
       connectWebSocket();
     }
 
     return () => {
-      // Cleanup on unmount
       connectionAttemptRef.current = false;
 
       if (reconnectTimeoutRef.current) {
@@ -58,7 +134,7 @@ export function useWebSocket() {
         setSocket(null);
       }
     };
-  }, [token]); // Only depend on token
+  }, [token]);
 
   const sendMessage = useCallback((message: Omit<WebSocketMessage, 'timestamp'>) => {
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -68,11 +144,11 @@ export function useWebSocket() {
           timestamp: new Date().toISOString(),
         }));
       } catch (error) {
-        // Silent error handling
+        console.warn('Failed to send WebSocket message:', error);
         setIsConnected(false);
       }
     } else if (token && !connectionAttemptRef.current) {
-      // Try to reconnect only if not already attempting
+      // Try to reconnect if not already attempting
       connectWebSocket();
     }
   }, [socket, token, connectWebSocket]);
@@ -93,12 +169,12 @@ export function useWebSocket() {
 
   return {
     isConnected,
-    lastMessage: null, // This was removed as it was not used in the provided snippet
+    lastMessage,
     sendMessage,
     joinChat,
     leaveChat,
     sendTyping,
-    connect: connectWebSocket, // Renamed to connect for consistency with original
+    connect: connectWebSocket,
     disconnect: () => {
       connectionAttemptRef.current = false;
       if (reconnectTimeoutRef.current) {

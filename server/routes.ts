@@ -310,10 +310,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { chatId } = req.params;
       const { limit = 50, offset = 0 } = req.query;
-      
+
       const cacheKey = `${chatId}:${limit}:${offset}`;
       const cached = messageCache.get(cacheKey);
-      
+
       // Return cached data if available and not expired
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
         res.set({
@@ -476,7 +476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/messages/decrypt-preview', authenticate, async (req: AuthenticatedRequest, res) => {
     try {
       const { content } = req.body;
-      
+
       // Fast response for empty content
       if (!content) {
         return res.json({ preview: "No content" });
@@ -485,7 +485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate cache key from content hash
       const contentHash = Buffer.from(content).toString('base64').slice(0, 16);
       const cached = previewCache.get(contentHash);
-      
+
       // Return cached preview if available
       if (cached && Date.now() - cached.timestamp < PREVIEW_CACHE_DURATION) {
         res.set({
@@ -531,11 +531,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const algorithm = 'aes-256-cbc';
               const key = crypto.scryptSync('ultrasecure-messenger-key', 'salt', 32);
               const iv = Buffer.from(parsed.iv, 'hex');
-              
+
               const decipher = crypto.createDecipheriv(algorithm, key, iv);
               let decrypted = decipher.update(parsed.encrypted, 'hex', 'utf8');
               decrypted += decipher.final('utf8');
-              
+
               preview = decrypted.length > 50 ? decrypted.substring(0, 47) + "..." : decrypted;
             } catch (legacyDecryptError) {
               // Secure error handling without sensitive details
@@ -587,6 +587,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // In production, use HTTP call to Go server or message queue
     // For now, we'll skip direct WebSocket broadcasting
     console.log('Message for Go WebSocket:', message);
+  }
+
+  // WebSocket server setup
+  const wss = new WebSocket.Server({
+    server,
+    path: '/ws',
+    perMessageDeflate: false
+  });
+
+  // WebSocket connection handling
+  wss.on('connection', (ws, req) => {
+    let userId: string | null = null;
+    let chatId: string | null = null;
+
+    ws.on('message', async (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+
+        switch (message.type) {
+          case 'authenticate':
+            try {
+              const decoded = jwt.verify(message.token, JWT_SECRET) as any;
+              userId = decoded.userId;
+              // Store the active connection with userId
+              activeConnections.set(userId, ws);
+              ws.send(JSON.stringify({ type: 'connected', userId }));
+            } catch (error) {
+              ws.send(JSON.stringify({ type: 'error', message: 'Authentication failed' }));
+              ws.close();
+            }
+            break;
+
+          case 'join_chat':
+            if (userId) {
+              chatId = message.chatId;
+              // Add user to chat room
+              if (!userChatRooms.has(chatId)) {
+                userChatRooms.set(chatId, new Set());
+              }
+              userChatRooms.get(chatId)?.add(userId);
+              ws.send(JSON.stringify({ type: 'joined_chat', chatId }));
+            }
+            break;
+
+          case 'message':
+            if (userId && chatId && message.content) {
+              // Store message in DB (this part will be handled by HTTP API call for simplicity in this example)
+              // For a true WebSocket solution, you'd interact with `storage` here directly.
+
+              // Broadcast message to other clients in the same chat
+              broadcastToChat(chatId, {
+                type: 'message',
+                chatId: chatId,
+                content: message.content,
+                senderId: userId,
+                timestamp: new Date().toISOString(),
+              });
+            }
+            break;
+
+          case 'typing':
+            if (userId && chatId) {
+              // Broadcast typing indicator
+              broadcastToChat(chatId, {
+                type: 'typing',
+                chatId: chatId,
+                senderId: userId,
+              });
+            }
+            break;
+        }
+      } catch (error) {
+        console.error('WebSocket message error:', error);
+        ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
+      }
+    });
+
+    ws.on('close', () => {
+      if (userId && chatId) {
+        // Remove user from chat room
+        userChatRooms.get(chatId)?.delete(userId);
+        if (userChatRooms.get(chatId)?.size === 0) {
+          userChatRooms.delete(chatId);
+        }
+
+        // Broadcast user offline status
+        broadcastToChat(chatId, {
+          type: 'user_offline',
+          chatId: chatId,
+          senderId: userId,
+        });
+      }
+      // Remove from active connections
+      activeConnections.delete(userId!);
+    });
+
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+      // Attempt to remove from active connections on error
+      if (userId) {
+        activeConnections.delete(userId);
+      }
+    });
+  });
+
+  // Helper function to broadcast messages to a specific chat room
+  function broadcastToChat(chatId: string, message: object) {
+    const messageString = JSON.stringify(message);
+    const recipients = userChatRooms.get(chatId);
+
+    if (recipients) {
+      recipients.forEach((recipientId) => {
+        const connection = activeConnections.get(recipientId);
+        if (connection && connection.readyState === WebSocket.OPEN) {
+          connection.send(messageString);
+        }
+      });
+    }
   }
 
   const httpServer = createServer(app);
