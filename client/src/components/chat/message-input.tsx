@@ -10,7 +10,7 @@ interface MessageInputProps {
   isMobile?: boolean;
 }
 
-export default function MessageInput({ onSendMessage, onTyping, disabled, isMobile = false }: MessageInputProps) {
+export function MessageInput({ onSendMessage, onTyping, disabled, isMobile = false }: MessageInputProps) {
   const [message, setMessage] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -90,3 +90,5 @@ export default function MessageInput({ onSendMessage, onTyping, disabled, isMobi
     </div>
   );
 }
+
+export default MessageInput;

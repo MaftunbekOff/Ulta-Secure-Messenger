@@ -53,7 +53,7 @@ export function useWebSocket() {
   };
 
   const getWebSocketUrl = () => {
-    if (typeof window === 'undefined') return 'ws://localhost:8080/ws';
+    if (typeof window === 'undefined') return 'ws://0.0.0.0:8080/ws';
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const hostname = window.location.hostname;
@@ -65,21 +65,18 @@ export function useWebSocket() {
         hostname.includes('replit.com') ||
         hostname.includes('.repl.') ||
         hostname.endsWith('.repl')) {
-      // Replit production environment
-      return `wss://${hostname}/ws`;
+      // Replit production environment - port 8080 bilan
+      const port = window.location.port || '8080';
+      return `${protocol}//${hostname}:8080/ws`;
     }
 
     // Development rejimi
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `ws://localhost:8080/ws`;
+      return `ws://0.0.0.0:8080/ws`;
     }
 
-    // Production fallback with explicit port handling
-    if (window.location.port && window.location.port !== '80' && window.location.port !== '443') {
-      return `${protocol}//${hostname}:${window.location.port}/ws`;
-    }
-
-    return `${protocol}//${hostname}/ws`;
+    // Default fallback
+    return `${protocol}//${hostname}:8080/ws`;
   };
 
 
