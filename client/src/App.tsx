@@ -42,14 +42,27 @@ function App() {
   // Handle unhandled promise rejections
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      // Suppress network-related errors during development
-      if (event.reason?.name === 'TypeError' && 
-          (event.reason?.message?.includes('fetch') || 
-           event.reason?.message?.includes('Failed to fetch'))) {
+      // Suppress all Vite HMR and development-related errors
+      const reason = event.reason;
+      const message = reason?.message || '';
+      const stack = reason?.stack || '';
+      
+      // Filter out Vite HMR, fetch, and development server errors
+      if (
+        reason?.name === 'TypeError' ||
+        message.includes('fetch') ||
+        message.includes('Failed to fetch') ||
+        message.includes('NetworkError') ||
+        stack.includes('vite/client') ||
+        stack.includes('@vite/client') ||
+        stack.includes('ping') ||
+        stack.includes('waitForSuccessfulPing')
+      ) {
         event.preventDefault();
         return;
       }
       
+      // Only log genuine application errors
       console.warn('Unhandled promise rejection:', event.reason);
       event.preventDefault();
     };

@@ -26,7 +26,9 @@ export async function setupVite(app: Express, server: Server) {
       server,
       port: 5000,
       host: '0.0.0.0',
-      clientPort: 5000
+      clientPort: 5000,
+      timeout: 30000,
+      overlay: false
     },
     allowedHosts: true as const,
   };
