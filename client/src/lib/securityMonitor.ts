@@ -1,4 +1,3 @@
-
 // Optimized security monitoring system
 // Reduced frequency and improved error handling
 
@@ -47,7 +46,7 @@ class SecurityMonitor {
   // Perform security checks with error handling
   private async performSecurityCheck(): Promise<void> {
     const now = Date.now();
-    
+
     // Rate limiting - don't check too frequently
     if (now - this.lastCheck < this.checkFrequency) {
       return;
@@ -57,7 +56,7 @@ class SecurityMonitor {
 
     try {
       const issues = this.checkBrowserSecurity();
-      
+
       // Only log if there are actual issues
       if (issues.length > 0) {
         issues.forEach(issue => {
@@ -92,7 +91,7 @@ class SecurityMonitor {
       }
 
       // Check for development environment
-      const isDevelopment = window.location?.hostname === 'localhost' || 
+      const isDevelopment = window.location?.hostname === 'localhost' ||
                            window.location?.hostname?.includes('replit') ||
                            process.env.NODE_ENV === 'development';
 
@@ -114,12 +113,12 @@ class SecurityMonitor {
   // Check HTTPS connection
   private checkHttpsConnection(issues: SecurityEvent[]): void {
     try {
-      if (typeof window !== 'undefined' && 
-          window.location && 
-          window.location.protocol !== 'https:' && 
-          window.location.hostname !== 'localhost' && 
+      if (typeof window !== 'undefined' &&
+          window.location &&
+          window.location.protocol !== 'https:' &&
+          window.location.hostname !== 'localhost' &&
           !window.location.hostname.includes('replit')) {
-        
+
         issues.push({
           type: 'potential_breach',
           severity: 'high',
@@ -139,9 +138,9 @@ class SecurityMonitor {
   // Check crypto API support
   private checkCryptoSupport(issues: SecurityEvent[]): void {
     try {
-      if (typeof window !== 'undefined' && 
+      if (typeof window !== 'undefined' &&
           (!window.crypto || !window.crypto.subtle)) {
-        
+
         issues.push({
           type: 'encryption_failure',
           severity: 'critical',
@@ -161,7 +160,7 @@ class SecurityMonitor {
   // Log security events
   private logSecurityEvent(event: SecurityEvent): void {
     this.securityEvents.push(event);
-    
+
     // Only console log for critical issues
     if (event.severity === 'critical') {
       console.warn('🚨 Critical Security Event:', event.details.issue);
@@ -220,12 +219,12 @@ class SecurityMonitor {
   // Stop monitoring with proper cleanup
   stopMonitoring(): void {
     this.isMonitoring = false;
-    
+
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
-    
+
     console.log('🛡️ Security monitoring stopped');
   }
 
