@@ -407,7 +407,7 @@ export class DatabaseStorage implements IStorage {
   async getUserChats(userId: string): Promise<Chat[]> {
     try {
       // Optimized query with specific fields only
-      const chats = await db
+      const userChats = await db
         .select({
           id: chats.id,
           name: chats.name,
@@ -421,7 +421,7 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(chats.createdAt))
         .limit(50); // Limit initial load
 
-      return chats;
+      return userChats;
     } catch (error) {
       console.error('getUserChats error:', error);
       return [];
