@@ -28,7 +28,7 @@ export function useWebSocket() {
   const maxReconnectAttempts = 3;
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const onMessage = null; // This was not defined in the original snippet, keeping it null for now.
+  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
 
   // Add status indicator to DOM for performance monitoring
   const addStatusIndicator = () => {
@@ -48,11 +48,14 @@ export function useWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const hostname = window.location.hostname;
 
-    // Replit environment detection (all variants)
+    // Replit environment detection (comprehensive)
     if (hostname.includes('replit.dev') || 
         hostname.includes('replit.co') || 
         hostname.includes('replit.app') ||
-        hostname.includes('replit.com')) {
+        hostname.includes('replit.com') ||
+        hostname.includes('.repl.') ||
+        hostname.endsWith('.repl')) {
+      // Replit production environment
       return `wss://${hostname}/ws`;
     }
 
@@ -61,9 +64,12 @@ export function useWebSocket() {
       return `ws://localhost:8080/ws`;
     }
 
-    // Production fallback
-    const port = window.location.port ? `:${window.location.port}` : '';
-    return `${protocol}//${hostname}${port}/ws`;
+    // Production fallback with explicit port handling
+    if (window.location.port && window.location.port !== '80' && window.location.port !== '443') {
+      return `${protocol}//${hostname}:${window.location.port}/ws`;
+    }
+    
+    return `${protocol}//${hostname}/ws`;
   };
 
 
@@ -100,7 +106,7 @@ export function useWebSocket() {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          onMessage?.(data);
+          setLastMessage(data);
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
             console.error('WebSocket message parsing error:', error);
@@ -203,12 +209,12 @@ export function useWebSocket() {
 
   return {
     isConnected,
-    lastMessage: null, // This was removed as it was not used in the provided snippet
+    lastMessage,
     sendMessage,
     joinChat,
     leaveChat,
     sendTyping,
-    connect: connectWebSocket, // Renamed to connect for consistency with original
+    connect: connectWebSocket,
     disconnect: () => {
       connectionAttemptRef.current = false;
       if (reconnectTimeoutRef.current) {
