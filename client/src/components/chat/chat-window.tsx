@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
-import { MessageBubble } from './message-bubble';
-import { MessageInput } from './message-input';
+import MessageBubble from './message-bubble';
+import MessageInput from './message-input';
 import { LoadingSpinner } from './LoadingSpinner';
 import { useWebSocket } from '../../hooks/useWebSocket';
 
