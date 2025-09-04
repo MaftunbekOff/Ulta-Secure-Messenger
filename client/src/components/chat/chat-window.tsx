@@ -343,10 +343,14 @@ export default function ChatWindow({ chatId, isMobile = false }: ChatWindowProps
         )}
         {allMessages.map((message, index) => {
             const isOwn = message.senderId === user?.id;
+            // Unique key using message ID, index, and a timestamp-based fallback
+            const uniqueKey = message.id ? 
+              `msg-${message.id}` : 
+              `temp-${index}-${message.timestamp || Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
             return (
               <MessageBubble
-                key={`${message.id}-${index}-${message.timestamp || Date.now()}`}
+                key={uniqueKey}
                 message={message}
                 isOwn={isOwn}
                 isMobile={isMobile}

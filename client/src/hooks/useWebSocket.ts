@@ -46,19 +46,24 @@ export function useWebSocket() {
     if (typeof window === 'undefined') return 'ws://localhost:8080/ws';
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const hostname = window.location.hostname;
 
-    // Replit uchun maxsus URL
-    if (window.location.hostname.includes('replit.dev')) {
-      return `wss://${window.location.hostname}/ws`;
+    // Replit environment detection (all variants)
+    if (hostname.includes('replit.dev') || 
+        hostname.includes('replit.co') || 
+        hostname.includes('replit.app') ||
+        hostname.includes('replit.com')) {
+      return `wss://${hostname}/ws`;
     }
 
     // Development rejimi
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return `${protocol}//localhost:8080/ws`;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return `ws://localhost:8080/ws`;
     }
 
-    // Production
-    return `${protocol}//${window.location.hostname}/ws`;
+    // Production fallback
+    const port = window.location.port ? `:${window.location.port}` : '';
+    return `${protocol}//${hostname}${port}/ws`;
   };
 
 
@@ -126,10 +131,13 @@ export function useWebSocket() {
         }
       };
 
-      ws.onerror = () => {
-        setError('WebSocket mavjud emas - HTTP rejimida');
+      ws.onerror = (event) => {
+        setError('WebSocket ulanish xatosi');
         setIsConnecting(false);
-        // Silent error handling - no console spam
+        // Log only in development
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('WebSocket error:', event);
+        }
       };
 
       setSocket(ws);

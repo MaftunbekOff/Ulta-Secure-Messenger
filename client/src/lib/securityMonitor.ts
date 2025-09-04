@@ -26,16 +26,28 @@ export class SecurityMonitor {
 
   // Xavfsizlik hodisasini ro'yxatga olish
   logSecurityEvent(event: Omit<SecurityEvent, 'timestamp'>): void {
+    // Rate limiting - bir xil event turidan 1 minutda faqat 3 ta
+    const now = Date.now();
+    const recentSimilarEvents = this.events.filter(e => 
+      e.type === event.type && 
+      e.severity === event.severity && 
+      now - e.timestamp < 60000
+    );
+    
+    if (recentSimilarEvents.length >= 3) {
+      return; // Skip logging to prevent spam
+    }
+
     const fullEvent: SecurityEvent = {
       ...event,
-      timestamp: Date.now()
+      timestamp: now
     };
 
     this.events.push(fullEvent);
 
-    // Faqat oxirgi 1000 ta hodisani saqlash
-    if (this.events.length > 1000) {
-      this.events = this.events.slice(-1000);
+    // Faqat oxirgi 500 ta hodisani saqlash (memory optimization)
+    if (this.events.length > 500) {
+      this.events = this.events.slice(-500);
     }
 
     // Jiddiy hodisalar uchun darhol ogohlantirish
@@ -46,7 +58,10 @@ export class SecurityMonitor {
     // Xavfli faoliyatni aniqlash
     this.detectAnomalies(fullEvent);
 
-    console.log(`🚨 Security event logged:`, fullEvent);
+    // Faqat development da log qilish
+    if (process.env.NODE_ENV === 'development' && fullEvent.severity === 'critical') {
+      console.log(`🚨 Critical security event:`, fullEvent);
+    }
   }
 
   // Ogohlantirish callback'ini ro'yxatga olish
@@ -119,8 +134,9 @@ export class SecurityMonitor {
                           (window.location.hostname.includes('replit') || 
                            process.env.NODE_ENV === 'production');
       
-      if (!isProduction) {
-        return issues; // Development muhitida hech narsa tekshirmaymiz
+      // Faqat production muhitida va kam chastotada tekshirish
+      if (!isProduction || Math.random() > 0.1) { // 10% chance to run
+        return issues; 
       }
 
       // HTTPS tekshirish (faqat production da)
@@ -336,7 +352,7 @@ export class SecurityMonitor {
       // Tarmoq monitoringini boshlash
       this.monitorNetworkSecurity();
 
-      // Har 30 soniyada tekshirish
+      // Har 5 daqiqada tekshirish (spam ni kamaytirish uchun)
       setInterval(async () => {
         if (this.isMonitoring) {
           try {
@@ -344,10 +360,13 @@ export class SecurityMonitor {
             issues.forEach(issue => this.logSecurityEvent(issue));
             await this.checkMemorySecurity();
           } catch (error) {
-            console.warn('Periodic security check failed:', error);
+            // Silent error handling - no console spam
+            if (process.env.NODE_ENV === 'development') {
+              console.debug('Security check minor issue:', error?.message || 'Unknown');
+            }
           }
         }
-      }, 30000);
+      }, 300000); // 5 minutes instead of 30 seconds
     } catch (error) {
       console.error('Security monitoring start failed:', error);
       throw error;
@@ -378,28 +397,30 @@ export const initializeSecurityMonitoring = async (): Promise<void> => {
 // Enhanced error handling with throttling
 if (typeof window !== 'undefined') {
   let errorCount = 0;
-  const errorLimit = 10;
-  const resetInterval = 60000; // 1 minute
+  const errorLimit = 5; // Reduced limit
+  const resetInterval = 300000; // 5 minutes instead of 1 minute
   
   setInterval(() => { errorCount = 0; }, resetInterval);
   
-  // Better global error monitoring
+  // Better global error monitoring with reduced sensitivity
   window.addEventListener('unhandledrejection', (event) => {
-    if (errorCount >= errorLimit) return;
-    errorCount++;
+    if (errorCount >= errorLimit) {
+      event.preventDefault();
+      return;
+    }
     
     const reason = event.reason?.message || event.reason || '';
     
-    // Only log meaningful errors
-    if (reason.includes('CRITICAL') || reason.includes('SECURITY') || 
-        reason.includes('WebSocket') || reason.includes('Encryption')) {
+    // Only log critical errors
+    if (reason.includes('CRITICAL') || reason.includes('SECURITY BREACH')) {
+      errorCount++;
       try {
         securityMonitor.logSecurityEvent({
           type: 'unusual_activity',
-          severity: 'medium',
+          severity: 'high',
           details: {
-            message: 'Application error',
-            reason: reason.substring(0, 100),
+            message: 'Critical application error',
+            reason: reason.substring(0, 80),
             count: errorCount
           }
         });
@@ -410,15 +431,16 @@ if (typeof window !== 'undefined') {
     event.preventDefault();
   });
   
-  // Error recovery mechanism
+  // Simplified error recovery
   window.addEventListener('error', (event) => {
     if (errorCount >= errorLimit) return;
     
-    // Auto-recovery for certain errors
-    if (event.message?.includes('WebSocket')) {
-      setTimeout(() => {
-        window.location.reload();
-      }, 5000);
+    // Only react to critical errors
+    if (event.message?.includes('Network Error') && errorCount < 2) {
+      errorCount++;
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('Network error detected, monitoring...');
+      }
     }
   });
 }
