@@ -23,6 +23,7 @@ externalPort = 8080
 PORT = "5000"
 
 [workflows]
+runButton = "UltraSecure Fixed Stack"
 
 [[workflows.workflow]]
 name = "Project"
@@ -91,6 +92,39 @@ args = "sleep 5"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "go run server/websocket.go"
+
+[[workflows.workflow]]
+name = "UltraSecure Fixed Stack"
+author = 45696961
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🚀 Starting UltraSecure Messenger (Fixed)...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🔧 Killing existing processes on port 5000...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pkill -f \"tsx server/index.ts\" || echo \"No existing processes found\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pkill -f \"npm run dev\" || echo \"No npm processes found\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "sleep 2"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"⚡ Starting React frontend on port 5000...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
 
 [agent]
 expertMode = true

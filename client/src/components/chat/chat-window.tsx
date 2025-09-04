@@ -1,317 +1,149 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent } from '../ui/card';
-import { Button } from '../ui/button';
-import MessageBubble from './message-bubble';
-import MessageInput from './message-input';
-import { LoadingSpinner } from './LoadingSpinner';
-import { useWebSocket } from '../../hooks/useWebSocket';
+import React, { useState, useEffect } from 'react';
+import { MessageBubble } from './message-bubble';
+import { MessageInput } from './message-input';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Shield, Wifi, WifiOff } from 'lucide-react';
 
 interface Message {
   id: string;
   content: string;
-  senderId: string;
-  senderName: string;
-  timestamp: number;
-  chatId: string;
+  userId: string;
+  timestamp: Date;
   encrypted?: boolean;
-  messageType?: 'text' | 'image' | 'file' | 'system';
-  deliveryStatus?: 'sending' | 'sent' | 'delivered' | 'read';
 }
 
 interface ChatWindowProps {
-  chatId: string;
-  currentUserId: string;
-  currentUserName: string;
+  chatId?: string;
+  currentUserId?: string;
 }
 
-export default function ChatWindow({ chatId, currentUserId, currentUserName }: ChatWindowProps) {
+export default function ChatWindow({ chatId = 'default', currentUserId = 'user1' }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // WebSocket connection
   const { 
-    socket, 
-    sendMessage: wsSendMessage, 
-    connected: wsConnected,
-    error: wsError 
-  } = useWebSocket(currentUserId);
+    isConnected, 
+    sendMessage, 
+    lastMessage,
+    connectionStatus 
+  } = useWebSocket(`ws://localhost:8080/ws`);
 
-  // Scroll to bottom when new messages arrive
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  // Load chat messages on mount
+  // Handle incoming messages
   useEffect(() => {
-    loadChatMessages();
-  }, [chatId]);
-
-  // Handle WebSocket connection status
-  useEffect(() => {
-    setIsConnected(wsConnected);
-    if (wsError) {
-      setError(`Connection error: ${wsError}`);
-    }
-  }, [wsConnected, wsError]);
-
-  // Set up message handler for WebSocket
-  useEffect(() => {
-    if (!socket) return;
-
-    // Define message handler function
-    const handleMessage = (event: MessageEvent) => {
+    if (lastMessage) {
       try {
-        const data = JSON.parse(event.data);
+        const messageData = typeof lastMessage === 'string' 
+          ? JSON.parse(lastMessage) 
+          : lastMessage;
 
-        if (data.type === 'message' && data.chatId === chatId) {
+        if (messageData.type === 'message') {
           const newMessage: Message = {
-            id: data.messageId || `msg_${Date.now()}_${Math.random()}`,
-            content: data.content,
-            senderId: data.userId || data.senderId,
-            senderName: data.senderName || 'Unknown User',
-            timestamp: data.timestamp || Date.now(),
-            chatId: data.chatId,
-            encrypted: data.encrypted,
-            messageType: data.messageType || 'text',
-            deliveryStatus: 'delivered'
+            id: messageData.messageId || Date.now().toString(),
+            content: messageData.content || messageData.message,
+            userId: messageData.userId || 'other',
+            timestamp: new Date(messageData.timestamp || Date.now()),
+            encrypted: messageData.encrypted || true
           };
 
           setMessages(prev => [...prev, newMessage]);
-          scrollToBottom();
         }
       } catch (error) {
-        console.warn('Failed to parse WebSocket message:', error);
+        console.warn('Failed to parse message:', error);
       }
-    };
-
-    // Add event listener
-    socket.addEventListener('message', handleMessage);
-
-    // Cleanup
-    return () => {
-      socket.removeEventListener('message', handleMessage);
-    };
-  }, [socket, chatId]);
-
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // Load chat messages from API
-  const loadChatMessages = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch(`/api/chats/${chatId}/messages`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      if (data.messages && Array.isArray(data.messages)) {
-        const formattedMessages: Message[] = data.messages.map((msg: any) => ({
-          id: msg.id,
-          content: msg.content,
-          senderId: msg.senderId,
-          senderName: msg.senderName || 'Unknown User',
-          timestamp: msg.timestamp,
-          chatId: msg.chatId,
-          encrypted: msg.encrypted,
-          messageType: msg.messageType || 'text',
-          deliveryStatus: 'delivered'
-        }));
-
-        setMessages(formattedMessages);
-      } else {
-        setMessages([]);
-      }
-    } catch (error) {
-      console.error('Failed to load messages:', error);
-      setError(`Failed to load messages: ${error.message}`);
-      setMessages([]);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [lastMessage]);
 
-  // Handle sending new message
-  const handleSendMessage = async (content: string) => {
-    if (!content.trim() || !isConnected) {
+  // Add some demo messages on load
+  useEffect(() => {
+    const demoMessages: Message[] = [
+      {
+        id: '1',
+        content: 'UltraSecure Messenger ga xush kelibsiz! 🛡️',
+        userId: 'system',
+        timestamp: new Date(),
+        encrypted: true
+      }
+    ];
+    setMessages(demoMessages);
+  }, []);
+
+  const handleSendMessage = (content: string) => {
+    if (!isConnected) {
+      console.warn('WebSocket not connected');
       return;
     }
 
-    const tempMessage: Message = {
-      id: `temp_${Date.now()}_${Math.random()}`,
-      content,
-      senderId: currentUserId,
-      senderName: currentUserName,
-      timestamp: Date.now(),
+    const message = {
+      type: 'message',
       chatId,
-      messageType: 'text',
-      deliveryStatus: 'sending'
+      content,
+      messageId: Date.now().toString(),
+      userId: currentUserId,
+      timestamp: new Date().toISOString()
     };
 
-    // Add temporary message to UI
-    setMessages(prev => [...prev, tempMessage]);
-    scrollToBottom();
+    // Add to local messages immediately
+    const localMessage: Message = {
+      id: message.messageId,
+      content: message.content,
+      userId: message.userId,
+      timestamp: new Date(),
+      encrypted: true
+    };
 
-    try {
-      // Send via WebSocket if connected
-      if (wsSendMessage) {
-        await wsSendMessage({
-          type: 'message',
-          content,
-          chatId,
-          userId: currentUserId,
-          senderName: currentUserName,
-          timestamp: Date.now(),
-          messageId: tempMessage.id
-        });
+    setMessages(prev => [...prev, localMessage]);
 
-        // Update message status
-        setMessages(prev => prev.map(msg => 
-          msg.id === tempMessage.id 
-            ? { ...msg, deliveryStatus: 'sent' }
-            : msg
-        ));
-      } else {
-        // Fallback to HTTP API
-        const response = await fetch(`/api/chats/${chatId}/messages`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            content,
-            senderId: currentUserId,
-            senderName: currentUserName,
-            messageType: 'text'
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const result = await response.json();
-
-        // Update with real message ID
-        setMessages(prev => prev.map(msg => 
-          msg.id === tempMessage.id 
-            ? { ...msg, id: result.messageId, deliveryStatus: 'sent' }
-            : msg
-        ));
-      }
-    } catch (error) {
-      console.error('Failed to send message:', error);
-
-      // Mark message as failed
-      setMessages(prev => prev.map(msg => 
-        msg.id === tempMessage.id 
-          ? { ...msg, deliveryStatus: 'sending', content: `❌ ${msg.content}` }
-          : msg
-      ));
-
-      setError(`Failed to send message: ${error.message}`);
-    }
+    // Send via WebSocket
+    sendMessage(JSON.stringify(message));
   };
-
-  // Retry connection
-  const retryConnection = () => {
-    setError(null);
-    window.location.reload();
-  };
-
-  if (loading) {
-    return (
-      <Card className="flex-1 flex items-center justify-center">
-        <CardContent>
-          <LoadingSpinner />
-          <p className="mt-4 text-center text-muted-foreground">Loading messages...</p>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
-    <div className="flex-1 flex flex-col h-full">
-      {/* Connection Status */}
-      {!isConnected && (
-        <div className="bg-yellow-100 dark:bg-yellow-900/20 p-2 text-center text-sm">
-          <span className="text-yellow-800 dark:text-yellow-200">
-            ⚠️ Connection issues - messages may not be real-time
-          </span>
-          <Button
-            variant="link"
-            size="sm"
-            className="ml-2 h-auto p-0 text-yellow-800 dark:text-yellow-200"
-            onClick={retryConnection}
-          >
-            Retry
-          </Button>
-        </div>
-      )}
-
-      {/* Error Display */}
-      {error && (
-        <div className="bg-red-100 dark:bg-red-900/20 p-3 text-center">
-          <span className="text-red-800 dark:text-red-200">{error}</span>
-          <Button
-            variant="link"
-            size="sm"
-            className="ml-2 h-auto p-0 text-red-800 dark:text-red-200"
-            onClick={() => setError(null)}
-          >
-            Dismiss
-          </Button>
-        </div>
-      )}
-
-      {/* Messages Area */}
-      <Card className="flex-1 flex flex-col">
-        <CardContent className="flex-1 flex flex-col p-4">
-          <div className="flex-1 overflow-y-auto space-y-4 mb-4">
-            {messages.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                <div className="text-center">
-                  <p className="text-lg mb-2">No messages yet</p>
-                  <p className="text-sm">Start a conversation!</p>
-                </div>
-              </div>
-            ) : (
-              messages.map((message) => (
-                <MessageBubble
-                  key={message.id}
-                  message={message}
-                  isOwn={message.senderId === currentUserId}
-                  showSender={true}
-                />
-              ))
-            )}
-            <div ref={messagesEndRef} />
+    <Card className="h-full flex flex-col">
+      <CardHeader className="flex-shrink-0 pb-3">
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-green-500" />
+            <span>UltraSecure Chat</span>
           </div>
+          <div className="flex items-center gap-2 text-sm">
+            {isConnected ? (
+              <>
+                <Wifi className="h-4 w-4 text-green-500" />
+                <span className="text-green-500">Ulangan</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-4 w-4 text-red-500" />
+                <span className="text-red-500">Ulanmagan</span>
+              </>
+            )}
+          </div>
+        </CardTitle>
+      </CardHeader>
 
-          {/* Message Input */}
+      <CardContent className="flex-1 flex flex-col p-0">
+        <ScrollArea className="flex-1 px-4">
+          <div className="space-y-4 py-4">
+            {messages.map((message) => (
+              <MessageBubble
+                key={message.id}
+                message={message}
+                isOwn={message.userId === currentUserId}
+                senderName={message.userId === 'system' ? 'System' : `User ${message.userId}`}
+              />
+            ))}
+          </div>
+        </ScrollArea>
+
+        <div className="border-t">
           <MessageInput
             onSendMessage={handleSendMessage}
             disabled={!isConnected}
-            placeholder={isConnected ? "Type a message..." : "Connecting..."}
+            placeholder={isConnected ? "Xabar yozing..." : "Ulanish kutilmoqda..."}
           />
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

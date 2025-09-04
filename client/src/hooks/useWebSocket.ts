@@ -39,6 +39,7 @@ export function useWebSocket() {
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const ws = useRef<WebSocket | null>(null); // Use ref for WebSocket instance
   const setConnected = setIsConnected; // Alias for clarity
+  const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
 
   // Add status indicator to DOM for performance monitoring
   const addStatusIndicator = () => {
@@ -96,6 +97,7 @@ export function useWebSocket() {
         setConnected(true);
         setError(null);
         setReconnectAttempts(0);
+        setConnectionStatus('connected');
 
         // Enable keepalive for better connection
         if (ws.current) {
@@ -125,6 +127,7 @@ export function useWebSocket() {
       ws.current.onclose = (event) => {
         setConnected(false);
         setIsConnecting(false);
+        setConnectionStatus('disconnected');
 
         // Faqat development muhitida log qilish
         if (process.env.NODE_ENV === 'development') {
@@ -148,6 +151,7 @@ export function useWebSocket() {
       ws.current.onerror = (event) => {
         setError('WebSocket ulanish xatosi');
         setIsConnecting(false);
+        setConnectionStatus('error');
         // Log only in development
         if (process.env.NODE_ENV === 'development') {
           console.debug('WebSocket error:', event);
@@ -158,6 +162,7 @@ export function useWebSocket() {
     } catch (error) {
       setError('HTTP polling rejimida ishlayabdi');
       setIsConnecting(false);
+      setConnectionStatus('error');
       // Silent error handling - no console spam
     }
   }, [isConnecting, reconnectAttempts, maxReconnectAttempts]); // Removed socket from dependencies
@@ -181,6 +186,7 @@ export function useWebSocket() {
       }
       setSocket(null);
       setIsConnected(false); // Ensure connection status is false on unmount
+      setConnectionStatus('disconnected');
     };
   }, [connectWebSocket]); // Depend on connectWebSocket to ensure it's stable
 
@@ -196,6 +202,7 @@ export function useWebSocket() {
         setIsConnected(false);
         setSocket(null); // Clear socket on error
         ws.current = null; // Clear ref
+        setConnectionStatus('error');
       }
     } else if (token && !connectionAttemptRef.current) {
       // Try to reconnect only if not already attempting
@@ -218,8 +225,10 @@ export function useWebSocket() {
   }, [sendMessage]);
 
   return {
-    isConnected,
+    socket,
     lastMessage,
+    isConnected,
+    connectionStatus,
     sendMessage,
     joinChat,
     leaveChat,
@@ -238,6 +247,7 @@ export function useWebSocket() {
       setSocket(null);
       setIsConnected(false);
       setReconnectAttempts(0);
+      setConnectionStatus('disconnected');
     },
   };
 }
