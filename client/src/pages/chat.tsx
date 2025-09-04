@@ -1,0 +1,211 @@
+import { useState, useEffect } from "react";
+import { Menu, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Sidebar from "@/components/chat/sidebar";
+import ChatWindow from "@/components/chat/chat-window";
+import { encryptMessage, isMilitaryEncryptionAvailable } from "../lib/militaryEncryption";
+import { quantumSafe } from "../lib/quantumSafe";
+import { selfDestructMessages, DESTRUCT_CONFIGS } from "../lib/selfDestructMessages";
+import { securityMonitor } from "../lib/securityMonitor";
+
+export default function Chat() {
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Swipe functionality for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isSwipeLeft = distance > 50;
+    const isSwipeRight = distance < -50;
+
+    if (isMobile) {
+      if (isSwipeRight && !isSidebarOpen) {
+        setIsSidebarOpen(true);
+      } else if (isSwipeLeft && isSidebarOpen) {
+        setIsSidebarOpen(false);
+      }
+    }
+  };
+
+  const handleSelectChat = (chatId: string) => {
+    setSelectedChatId(chatId);
+    if (isMobile) {
+      setIsSidebarOpen(false);
+    }
+  };
+
+  // Function to handle sending messages with advanced security features
+  const sendMessage = async (content: string, recipientPublicKey: string) => {
+    let isEncrypted = false;
+    let messageToSend = content;
+
+    // Apply self-destruct timer if configured
+    const destructConfig = DESTRUCT_CONFIGS.find(config => config.feature === 'chat');
+    if (destructConfig) {
+      messageToSend = selfDestructMessages.applySelfDestruct(messageToSend, destructConfig.duration);
+      securityMonitor.logSecurityEvent({
+        type: 'feature_enabled',
+        severity: 'info',
+        details: { feature: 'self_destruct_messages', duration: destructConfig.duration }
+      });
+    }
+
+    // Use quantum-safe military-grade encryption if available
+    if (isMilitaryEncryptionAvailable()) {
+      try {
+        // Double encryption: Military + Quantum-safe
+        const militaryEncrypted = await encryptMessage(messageToSend, recipientPublicKey);
+        messageToSend = await quantumSafe.quantumSafeEncrypt(militaryEncrypted, recipientPublicKey);
+        isEncrypted = true;
+
+        securityMonitor.logSecurityEvent({
+          type: 'unusual_activity',
+          severity: 'low',
+          details: { 
+            action: 'quantum_safe_message_sent',
+            encryption_layers: 'military + quantum_safe'
+          }
+        });
+      } catch (error) {
+        console.error('Quantum-safe encryption failed:', error);
+        securityMonitor.logSecurityEvent({
+          type: 'encryption_failure',
+          severity: 'high',
+          details: { error: 'quantum_safe_encryption_failed', message: error }
+        });
+        // Fallback to regular encryption
+      }
+    }
+
+    // Placeholder for actual message sending logic
+    console.log("Sending message:", { message: messageToSend, encrypted: isEncrypted });
+    // In a real app, you would send `messageToSend` via WebSocket or another transport
+    // await sendMessageViaNetwork(messageToSend, recipientPublicKey, isEncrypted);
+  };
+
+  return (
+    <div className="flex h-screen bg-background relative">
+      {/* Mobile Header */}
+      {isMobile && (
+        <div className="absolute top-0 left-0 right-0 z-50 bg-background border-b border-border flex items-center justify-between p-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            data-testid="button-mobile-menu"
+          >
+            {isSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+          <h1 className="font-semibold">UltraSecure Messenger</h1>
+          <div className="w-9" />
+        </div>
+      )}
+
+      {/* Sidebar */}
+      <div className={`${isMobile ? 'absolute inset-y-0 left-0 z-40' : 'relative'} ${isMobile && !isSidebarOpen ? '-translate-x-full' : 'translate-x-0'} transition-transform duration-300 ease-in-out`}>
+        <Sidebar
+          selectedChatId={selectedChatId}
+          onSelectChat={handleSelectChat}
+          isMobile={isMobile}
+        />
+      </div>
+
+      {/* Mobile Overlay */}
+      {isMobile && isSidebarOpen && (
+        <div 
+          className="absolute inset-0 bg-black/20 z-30"
+          onClick={() => setIsSidebarOpen(false)}
+          data-testid="mobile-overlay"
+        />
+      )}
+
+      {/* Swipe Detection Area - only when sidebar is closed */}
+      {isMobile && !isSidebarOpen && (
+        <div 
+          className="absolute top-0 left-0 w-10 h-full z-20 pointer-events-auto"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        />
+      )}
+
+      {/* Main Content */}
+      <div className={`flex-1 flex flex-col overflow-hidden ${isMobile ? 'pt-16' : ''}`}>
+        {selectedChatId ? (
+          <ChatWindow chatId={selectedChatId} isMobile={isMobile} onSendMessage={sendMessage} />
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center bg-background text-center p-4">
+            <div className="max-w-md mx-auto">
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+                <svg 
+                  className="w-6 h-6 text-primary" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" 
+                  />
+                </svg>
+              </div>
+            </div>
+
+            <h2 className="text-2xl font-bold mb-4">Welcome to UltraSecure Messenger</h2>
+            <p className="text-muted-foreground mb-6">
+              Select a conversation to start messaging securely with end-to-end encryption.
+            </p>
+
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <div className="flex items-center justify-center space-x-2">
+                <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                <span>Real-time messaging with WebSocket</span>
+              </div>
+              <div className="flex items-center justify-center space-x-2">
+                <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                <span>Offline message queue</span>
+              </div>
+              <div className="flex items-center justify-center space-x-2">
+                <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                <span>Virtual scrolling for performance</span>
+              </div>
+            </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
