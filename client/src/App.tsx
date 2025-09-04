@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "./components/ui/toaster";
 import { SecurityDashboard } from "./components/SecurityDashboard";
+import { PerformanceDashboard } from "@/components/PerformanceDashboard";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import Chat from "@/pages/chat";
@@ -87,6 +88,7 @@ function App() {
       <Router />
       <Toaster />
       <SecurityDashboard />
+      <PerformanceDashboard />
     </QueryClientProvider>
   );
 }

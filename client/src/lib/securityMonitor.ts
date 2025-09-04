@@ -375,22 +375,32 @@ export const initializeSecurityMonitoring = async (): Promise<void> => {
   }
 };
 
-// Optimized error handling for production only
-if (typeof window !== 'undefined' && 
-    (window.location.hostname.includes('replit') || process.env.NODE_ENV === 'production')) {
+// Enhanced error handling with throttling
+if (typeof window !== 'undefined') {
+  let errorCount = 0;
+  const errorLimit = 10;
+  const resetInterval = 60000; // 1 minute
   
-  // Minimal global error monitoring
+  setInterval(() => { errorCount = 0; }, resetInterval);
+  
+  // Better global error monitoring
   window.addEventListener('unhandledrejection', (event) => {
-    // Only log critical application errors
+    if (errorCount >= errorLimit) return;
+    errorCount++;
+    
     const reason = event.reason?.message || event.reason || '';
-    if (reason.includes('CRITICAL') || reason.includes('SECURITY')) {
+    
+    // Only log meaningful errors
+    if (reason.includes('CRITICAL') || reason.includes('SECURITY') || 
+        reason.includes('WebSocket') || reason.includes('Encryption')) {
       try {
         securityMonitor.logSecurityEvent({
           type: 'unusual_activity',
-          severity: 'high',
+          severity: 'medium',
           details: {
-            message: 'Critical promise rejection',
-            reason: reason.substring(0, 100)
+            message: 'Application error',
+            reason: reason.substring(0, 100),
+            count: errorCount
           }
         });
       } catch {
@@ -398,5 +408,17 @@ if (typeof window !== 'undefined' &&
       }
     }
     event.preventDefault();
+  });
+  
+  // Error recovery mechanism
+  window.addEventListener('error', (event) => {
+    if (errorCount >= errorLimit) return;
+    
+    // Auto-recovery for certain errors
+    if (event.message?.includes('WebSocket')) {
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000);
+    }
   });
 }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -113,7 +112,7 @@ const UltraSecureMessenger: React.FC = () => {
     if (!newMessage.trim() || !activeChat || !ws) return;
 
     const encryptedContent = encryptMessage(newMessage);
-    
+
     const message = {
       type: 'message',
       chatId: activeChat,
@@ -125,7 +124,7 @@ const UltraSecureMessenger: React.FC = () => {
 
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(message));
-      
+
       // Add to local messages immediately
       const localMessage: Message = {
         id: message.messageId,
@@ -134,7 +133,7 @@ const UltraSecureMessenger: React.FC = () => {
         timestamp: message.timestamp,
         encrypted: true,
       };
-      
+
       setMessages(prev => [...prev, localMessage]);
       setNewMessage('');
     } else {
@@ -175,7 +174,7 @@ const UltraSecureMessenger: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1a1a1a" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🚀 UltraSecure Messenger</Text>
@@ -206,7 +205,7 @@ const UltraSecureMessenger: React.FC = () => {
             keyExtractor={(item) => item.id}
             style={styles.messagesList}
           />
-          
+
           {/* Message Input */}
           <View style={styles.inputContainer}>
             <TextInput
