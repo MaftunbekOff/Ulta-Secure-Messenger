@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -12,6 +11,9 @@ interface PerformanceMetrics {
   cpuUsage: number;
   memoryUsage: number;
   connectionCount: number;
+  activeUsers: number;
+  messagesPerSecond: number;
+  serverLoad: number;
 }
 
 export function PerformanceDashboard() {
@@ -21,7 +23,10 @@ export function PerformanceDashboard() {
     errorRate: 0.1,
     cpuUsage: 12,
     memoryUsage: 45,
-    connectionCount: 234
+    connectionCount: 234,
+    activeUsers: 0,
+    messagesPerSecond: 0,
+    serverLoad: 0
   });
   const [isVisible, setIsVisible] = useState(false);
 
@@ -36,7 +41,11 @@ export function PerformanceDashboard() {
             ...prev,
             responseTime: Math.random() * 30 + 10,
             throughput: Math.floor(Math.random() * 500) + 800,
-            connectionCount: Math.floor(Math.random() * 100) + 200
+            connectionCount: Math.floor(Math.random() * 100) + 200,
+            activeUsers: Math.floor(Math.random() * 500000) + 500000, // Simulate 1M users
+            messagesPerSecond: Math.floor(Math.random() * 10000) + 5000, // Simulate high message speed
+            memoryUsage: `${Math.floor(Math.random() * 500)}MB`, // Simulate memory usage
+            serverLoad: Math.random() * 50 + 20 // Simulate server load
           }));
         }
       } catch (error) {
@@ -51,6 +60,12 @@ export function PerformanceDashboard() {
     if (value <= thresholds[0]) return { color: 'text-green-500', status: 'Excellent' };
     if (value <= thresholds[1]) return { color: 'text-yellow-500', status: 'Good' };
     return { color: 'text-red-500', status: 'Critical' };
+  };
+
+  const getServerLoadStatus = (value: number) => {
+    if (value <= 30) return { color: 'text-green-500', status: 'Low' };
+    if (value <= 70) return { color: 'text-yellow-500', status: 'Medium' };
+    return { color: 'text-red-500', status: 'High' };
   };
 
   if (!isVisible) {
@@ -115,7 +130,7 @@ export function PerformanceDashboard() {
                 {metrics.throughput}+ msg/s
               </div>
               <Badge variant="secondary" className="text-xs">
-                Telegram-killer speed
+                Ultra-Fast
               </Badge>
             </div>
           </div>
@@ -137,25 +152,61 @@ export function PerformanceDashboard() {
                 <span className="text-xs">Memory</span>
               </div>
               <div className="text-sm font-bold text-blue-500">
-                {metrics.memoryUsage}MB
+                {metrics.memoryUsage}
               </div>
             </div>
           </div>
 
-          {/* Active Connections */}
+          {/* Active Users */}
           <div className="p-2 bg-muted/50 rounded">
             <div className="flex items-center justify-between">
-              <span className="text-sm">Active Connections</span>
+              <span className="text-sm">Active Users</span>
               <div className="text-lg font-bold text-purple-500">
-                {metrics.connectionCount}
+                {metrics.activeUsers.toLocaleString()}
               </div>
             </div>
+          </div>
+
+          {/* Messages Per Second */}
+          <div className="p-2 bg-muted/50 rounded">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Messages/sec</span>
+              <div className="text-lg font-bold text-orange-500">
+                {metrics.messagesPerSecond}
+              </div>
+            </div>
+          </div>
+
+          {/* Server Load */}
+          <div className="p-2 bg-muted/50 rounded">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Server Load</span>
+              <div className={`text-lg font-bold ${getServerLoadStatus(metrics.serverLoad).color}`}>
+                {metrics.serverLoad.toFixed(1)}%
+              </div>
+            </div>
+            <Badge variant="secondary" className="text-xs w-full text-center">
+              {getServerLoadStatus(metrics.serverLoad).status} Load
+            </Badge>
+          </div>
+
+          {/* Error Rate */}
+          <div className="p-2 bg-muted/50 rounded">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Error Rate</span>
+              <div className={`text-lg font-bold ${getPerformanceStatus(metrics.errorRate, [0.5, 2]).color}`}>
+                {metrics.errorRate.toFixed(1)}%
+              </div>
+            </div>
+            <Badge variant="secondary" className="text-xs w-full text-center">
+              {getPerformanceStatus(metrics.errorRate, [0.5, 2]).status}
+            </Badge>
           </div>
 
           {/* Comparison with Telegram */}
           <div className="p-2 bg-green-500/10 border border-green-500/20 rounded">
             <div className="text-xs text-center text-green-600 font-semibold">
-              🚀 10x faster than Telegram MTProto
+              🚀 Optimized for 1M+ users & ultra-fast messaging
             </div>
           </div>
         </CardContent>

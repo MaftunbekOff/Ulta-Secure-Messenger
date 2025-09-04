@@ -341,12 +341,12 @@ export default function ChatWindow({ chatId, isMobile = false }: ChatWindowProps
             Loading older messages...
           </div>
         )}
-        {allMessages.map((message) => {
+        {allMessages.map((message, index) => {
             const isOwn = message.senderId === user?.id;
 
             return (
               <MessageBubble
-                key={message.id}
+                key={`${message.id}-${index}`}
                 message={message}
                 isOwn={isOwn}
                 isMobile={isMobile}

@@ -211,16 +211,8 @@ func (h *Hub) run() {
 			h.mutex.Unlock()
 
 		case message := <-h.broadcast:
-			h.mutex.RLock()
-			for client := range h.clients {
-				select {
-				case client.send <- message:
-				default:
-					close(client.send)
-					delete(h.clients, client)
-				}
-			}
-			h.mutex.RUnlock()
+			// Use ultra-fast batch broadcasting
+			h.ultraBroadcast(message)
 		}
 	}
 }
@@ -520,4 +512,60 @@ func testRustIntegration() bool {
 	fmt.Println("🦀 Encryption engine: Working")
 
 	return true
+}
+
+// Ultra-fast broadcasting for 1M+ users
+func (h *Hub) ultraBroadcast(message []byte) {
+	h.mutex.RLock()
+	clientCount := len(h.clients)
+	clients := make([]*Client, 0, clientCount)
+	
+	// Create client slice for parallel processing
+	for client := range h.clients {
+		clients = append(clients, client)
+	}
+	h.mutex.RUnlock()
+	
+	if clientCount == 0 {
+		return
+	}
+	
+	// Process in batches for optimal performance
+	batchSize := 1000 // 1000 clients per batch
+	var wg sync.WaitGroup
+	
+	for i := 0; i < clientCount; i += batchSize {
+		end := i + batchSize
+		if end > clientCount {
+			end = clientCount
+		}
+		
+		wg.Add(1)
+		go func(batch []*Client) {
+			defer wg.Done()
+			
+			for _, client := range batch {
+				select {
+				case client.send <- message:
+					// Message sent successfully
+				default:
+					// Client channel full - remove client
+					h.removeSlowClient(client)
+				}
+			}
+		}(clients[i:end])
+	}
+	
+	wg.Wait()
+}
+
+func (h *Hub) removeSlowClient(client *Client) {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+	
+	if _, exists := h.clients[client]; exists {
+		close(client.send)
+		delete(h.clients, client)
+		client.conn.Close()
+	}
 }

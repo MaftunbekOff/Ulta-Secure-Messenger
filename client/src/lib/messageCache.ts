@@ -17,8 +17,9 @@ class MessageCache {
   private cache = new Map<string, CachedMessage[]>();
   private metadata = new Map<string, CacheMetadata>();
   private offlineQueue = new Map<string, any[]>(); // Offline message queue
-  private readonly maxSize = 100; // Increased for better offline experience
-  private readonly expireTime = 600000; // 10 minutes for slow connections
+  private readonly maxSize = 10000; // 10k messages for million users
+  private readonly expireTime = 3600000; // 1 hour cache time
+  private compressionEnabled = true;
 
   // Store messages with compression and offline support
   store(chatId: string, messages: any[]): void {
