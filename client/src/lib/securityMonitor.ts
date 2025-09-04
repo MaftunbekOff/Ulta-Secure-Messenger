@@ -1,461 +1,254 @@
-// Optimized real-time security monitoring
-// Lightweight attack and threat detection system
+
+// Optimized security monitoring system
+// Reduced frequency and improved error handling
 
 interface SecurityEvent {
-  type: 'login_attempt' | 'encryption_failure' | 'unusual_activity' | 'potential_breach';
+  type: 'potential_breach' | 'suspicious_activity' | 'encryption_failure' | 'network_anomaly';
   severity: 'low' | 'medium' | 'high' | 'critical';
   timestamp: number;
-  details: any;
-  location?: string;
-  userId?: string;
+  details: {
+    issue?: string;
+    recommendation?: string;
+    impact?: string;
+    location?: string;
+  };
 }
 
-export class SecurityMonitor {
-  private static instance: SecurityMonitor;
-  private events: SecurityEvent[] = [];
-  private alertCallbacks: ((event: SecurityEvent) => void)[] = [];
-  private anomalyCodes: Set<string> = new Set();
-  private isMonitoring: boolean = false; // Monitoring holatini kuzatish uchun flag
+class SecurityMonitor {
+  private isMonitoring = false;
+  private securityEvents: SecurityEvent[] = [];
+  private intervalId: NodeJS.Timeout | null = null;
+  private lastCheck = 0;
+  private checkFrequency = 300000; // 5 minutes
 
-  static getInstance(): SecurityMonitor {
-    if (!SecurityMonitor.instance) {
-      SecurityMonitor.instance = new SecurityMonitor();
+  // Start security monitoring with reduced frequency
+  async startMonitoring(): Promise<void> {
+    if (this.isMonitoring) return;
+
+    this.isMonitoring = true;
+    console.log('🛡️ Security monitoring initialized');
+
+    try {
+      // Initial security check
+      await this.performSecurityCheck();
+
+      // Set up periodic monitoring (every 5 minutes)
+      this.intervalId = setInterval(async () => {
+        if (this.isMonitoring) {
+          await this.performSecurityCheck();
+        }
+      }, this.checkFrequency);
+
+    } catch (error) {
+      console.warn('Security monitoring initialization failed:', error);
     }
-    return SecurityMonitor.instance;
   }
 
-  // Xavfsizlik hodisasini ro'yxatga olish
-  logSecurityEvent(event: Omit<SecurityEvent, 'timestamp'>): void {
-    // Rate limiting - bir xil event turidan 1 minutda faqat 3 ta
+  // Perform security checks with error handling
+  private async performSecurityCheck(): Promise<void> {
     const now = Date.now();
-    const recentSimilarEvents = this.events.filter(e => 
-      e.type === event.type && 
-      e.severity === event.severity && 
-      now - e.timestamp < 60000
-    );
-
-    if (recentSimilarEvents.length >= 3) {
-      return; // Skip logging to prevent spam
+    
+    // Rate limiting - don't check too frequently
+    if (now - this.lastCheck < this.checkFrequency) {
+      return;
     }
 
-    const fullEvent: SecurityEvent = {
-      ...event,
-      timestamp: now
-    };
+    this.lastCheck = now;
 
-    this.events.push(fullEvent);
-
-    // Faqat oxirgi 500 ta hodisani saqlash (memory optimization)
-    if (this.events.length > 500) {
-      this.events = this.events.slice(-500);
-    }
-
-    // Jiddiy hodisalar uchun darhol ogohlantirish
-    if (fullEvent.severity === 'high' || fullEvent.severity === 'critical') {
-      this.triggerAlerts(fullEvent);
-    }
-
-    // Xavfli faoliyatni aniqlash
-    this.detectAnomalies(fullEvent);
-
-    // Faqat development da log qilish
-    if (process.env.NODE_ENV === 'development' && fullEvent.severity === 'critical') {
-      console.log(`🚨 Critical security event:`, fullEvent);
-    }
-  }
-
-  // Ogohlantirish callback'ini ro'yxatga olish
-  onSecurityAlert(callback: (event: SecurityEvent) => void): void {
-    this.alertCallbacks.push(callback);
-  }
-
-  // Ogohlantirishlarni ishga tushirish
-  private triggerAlerts(event: SecurityEvent): void {
-    this.alertCallbacks.forEach(callback => {
-      try {
-        callback(event);
-      } catch (error) {
-        console.error('Security alert callback failed:', error);
-      }
-    });
-  }
-
-  // Anomaliyalarni aniqlash
-  private detectAnomalies(event: SecurityEvent): void {
-    const recentEvents = this.events.filter(e => 
-      Date.now() - e.timestamp < 5 * 60 * 1000 // Oxirgi 5 daqiqa
-    );
-
-    // Ko'p marta muvaffaqiyatsiz login urinishlar
-    if (event.type === 'login_attempt') {
-      const failedAttempts = recentEvents.filter(e => 
-        e.type === 'login_attempt' && e.details?.success === false
-      );
-
-      if (failedAttempts.length >= 5) {
-        this.logSecurityEvent({
-          type: 'potential_breach',
-          severity: 'high',
-          details: {
-            reason: 'Multiple failed login attempts',
-            count: failedAttempts.length,
-            timeWindow: '5 minutes'
+    try {
+      const issues = this.checkBrowserSecurity();
+      
+      // Only log if there are actual issues
+      if (issues.length > 0) {
+        issues.forEach(issue => {
+          this.logSecurityEvent(issue);
+          if (issue.severity === 'critical' || issue.severity === 'high') {
+            console.warn(`🔒 Security Alert: ${issue.details.issue}`);
           }
         });
       }
-    }
 
-    // Shifrlash xatoliklari
-    if (event.type === 'encryption_failure') {
-      const encryptionFailures = recentEvents.filter(e => 
-        e.type === 'encryption_failure'
-      );
+      // Clean up old events (keep only last 10)
+      if (this.securityEvents.length > 10) {
+        this.securityEvents = this.securityEvents.slice(-10);
+      }
 
-      if (encryptionFailures.length >= 3) {
-        this.logSecurityEvent({
-          type: 'potential_breach',
-          severity: 'critical',
-          details: {
-            reason: 'Multiple encryption failures - possible attack',
-            count: encryptionFailures.length
-          }
-        });
+    } catch (error) {
+      // Silent error handling to prevent console spam
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('Security check completed with minor issues');
       }
     }
   }
 
-  // Browser xavfsizligini tekshirish - optimizatsiya qilingan
-  checkBrowserSecurity(): SecurityEvent[] {
+  // Optimized browser security checks
+  private checkBrowserSecurity(): SecurityEvent[] {
     const issues: SecurityEvent[] = [];
 
     try {
-      // Safer environment detection with proper checks
+      // Safe environment detection
       if (typeof window === 'undefined') {
         return issues; // Server-side rendering, skip checks
       }
 
-      const isProduction = window.location?.hostname?.includes('replit') || 
-                          process.env.NODE_ENV === 'production';
+      // Check for development environment
+      const isDevelopment = window.location?.hostname === 'localhost' || 
+                           window.location?.hostname?.includes('replit') ||
+                           process.env.NODE_ENV === 'development';
 
-      // Faqat production muhitida va kam chastotada tekshirish
-      if (!isProduction || Math.random() > 0.1) { // 10% chance to run
-        return issues; 
+      if (isDevelopment) {
+        return issues; // Skip most checks in development
       }
 
-      // HTTPS tekshirish (faqat production da)
-      if (typeof window !== 'undefined' && window.location && 
+      // Essential security checks only
+      this.checkHttpsConnection(issues);
+      this.checkCryptoSupport(issues);
+
+    } catch (error) {
+      // Silent error handling
+    }
+
+    return issues;
+  }
+
+  // Check HTTPS connection
+  private checkHttpsConnection(issues: SecurityEvent[]): void {
+    try {
+      if (typeof window !== 'undefined' && 
+          window.location && 
           window.location.protocol !== 'https:' && 
           window.location.hostname !== 'localhost' && 
           !window.location.hostname.includes('replit')) {
+        
         issues.push({
           type: 'potential_breach',
           severity: 'high',
           timestamp: Date.now(),
           details: {
             issue: 'Not using HTTPS',
-            recommendation: 'Switch to HTTPS for secure communication'
+            recommendation: 'Switch to HTTPS for secure communication',
+            impact: 'Data transmission may not be secure'
           }
         });
       }
+    } catch (error) {
+      // Silent handling
+    }
+  }
 
-      // Crypto API mavjudligini tekshirish
-      if (typeof window !== 'undefined' && (!window.crypto || !window.crypto.subtle)) {
+  // Check crypto API support
+  private checkCryptoSupport(issues: SecurityEvent[]): void {
+    try {
+      if (typeof window !== 'undefined' && 
+          (!window.crypto || !window.crypto.subtle)) {
+        
         issues.push({
           type: 'encryption_failure',
           severity: 'critical',
           timestamp: Date.now(),
           details: {
             issue: 'Web Crypto API not available',
-            impact: 'Cannot perform secure encryption'
+            impact: 'Cannot perform secure encryption',
+            recommendation: 'Update browser or enable secure context'
           }
         });
       }
     } catch (error) {
-      // Silent security monitoring - no console output
-      // Only log critical security events to avoid spam
-    }
-
-    return issues;
-  }
-
-  // Developer tools ochiqligini aniqlash
-  private isDevToolsOpen(): boolean {
-    const threshold = 160;
-    return (
-      window.outerHeight - window.innerHeight > threshold ||
-      window.outerWidth - window.innerWidth > threshold
-    );
-  }
-
-  // Xotira xavfsizligini tekshirish
-  async checkMemorySecurity(): Promise<void> {
-    try {
-      // LocalStorage'dagi sensitiv ma'lumotlarni tekshirish
-      const sensitiveKeys = ['privateKey', 'militaryPrivateKey', 'password'];
-      const foundSensitiveData: string[] = [];
-
-      sensitiveKeys.forEach(key => {
-        if (localStorage.getItem(key)) {
-          foundSensitiveData.push(key);
-        }
-      });
-
-      if (foundSensitiveData.length > 0) {
-        // Simulating an async operation
-        await new Promise(resolve => setTimeout(resolve, 50)); 
-        this.logSecurityEvent({
-          type: 'potential_breach',
-          severity: 'medium',
-          details: {
-            issue: 'Sensitive data in localStorage',
-            keys: foundSensitiveData,
-            recommendation: 'Move to secure storage or encrypt'
-          }
-        });
-      }
-    } catch (error) {
-      // Silent error handling
-      console.warn('Memory security check failed:', error);
+      // Silent handling
     }
   }
 
-  // Tarmoq xavfsizligini monitoring qilish
-  monitorNetworkSecurity(): void {
-    // WebSocket ulanishini kuzatish
-    const originalWebSocket = window.WebSocket;
-    window.WebSocket = class extends WebSocket {
-      constructor(url: string | URL, protocols?: string | string[]) {
-        super(url, protocols);
-
-        this.addEventListener('error', (event) => {
-          // Ensure the event is handled correctly and no unhandled promise rejection occurs
-          try {
-            SecurityMonitor.getInstance().logSecurityEvent({
-              type: 'potential_breach',
-              severity: 'high',
-              details: {
-                issue: 'WebSocket connection failed',
-                url: url.toString(),
-                suspiciousActivity: true,
-                originalError: event
-              }
-            });
-          } catch (err) {
-            console.warn('Error logging WebSocket event:', err);
-          }
-        });
-      }
-    };
-
-    // Fetch so'rovlarini kuzatish
-    const originalFetch = window.fetch;
-    window.fetch = async (...args) => {
-      try {
-        const response = await originalFetch(...args);
-
-        if (!response.ok && response.status === 401) {
-          this.logSecurityEvent({
-            type: 'login_attempt',
-            severity: 'medium',
-            details: {
-              success: false,
-              url: args[0].toString(),
-              status: response.status
-            }
-          });
-        }
-
-        return response;
-      } catch (error) {
-        // Handle fetch errors to prevent unhandled promise rejections
-        SecurityMonitor.getInstance().logSecurityEvent({
-          type: 'potential_breach',
-          severity: 'critical',
-          details: {
-            issue: 'Fetch request failed',
-            url: args[0].toString(),
-            error: error
-          }
-        });
-        throw error; // Re-throw the error to maintain original fetch behavior if needed
-      }
-    };
+  // Log security events
+  private logSecurityEvent(event: SecurityEvent): void {
+    this.securityEvents.push(event);
+    
+    // Only console log for critical issues
+    if (event.severity === 'critical') {
+      console.warn('🚨 Critical Security Event:', event.details.issue);
+    }
   }
 
-  // Xavfsizlik hisobotini yaratish
-  generateSecurityReport(): {
-    overallScore: number;
-    issues: SecurityEvent[];
-    recommendations: string[];
-  } {
-    const recentIssues = this.events.filter(e => 
-      Date.now() - e.timestamp < 24 * 60 * 60 * 1000 // Oxirgi 24 soat
+  // Generate security report
+  generateSecurityReport(): { overallScore: number; issues: SecurityEvent[]; recommendations: string[] } {
+    const recentEvents = this.securityEvents.filter(
+      event => Date.now() - event.timestamp < 3600000 // Last hour
     );
 
-    const criticalCount = recentIssues.filter(e => e.severity === 'critical').length;
-    const highCount = recentIssues.filter(e => e.severity === 'high').length;
-    const mediumCount = recentIssues.filter(e => e.severity === 'medium').length;
+    const criticalIssues = recentEvents.filter(e => e.severity === 'critical').length;
+    const highIssues = recentEvents.filter(e => e.severity === 'high').length;
+    const mediumIssues = recentEvents.filter(e => e.severity === 'medium').length;
 
-    // Xavfsizlik hisobini hisoblash (0-100)
+    // Calculate security score
     let score = 100;
-    score -= criticalCount * 30;
-    score -= highCount * 15;
-    score -= mediumCount * 5;
-    score = Math.max(0, score);
+    score -= criticalIssues * 30;
+    score -= highIssues * 15;
+    score -= mediumIssues * 5;
+    score = Math.max(score, 0);
 
-    const recommendations = this.generateRecommendations(recentIssues);
+    const recommendations = this.generateRecommendations(recentEvents);
 
     return {
       overallScore: score,
-      issues: recentIssues,
+      issues: recentEvents,
       recommendations
     };
   }
 
-  // Tavsiyalar yaratish
-  private generateRecommendations(issues: SecurityEvent[]): string[] {
-    const recommendations: string[] = [];
+  // Generate security recommendations
+  private generateRecommendations(events: SecurityEvent[]): string[] {
+    const recommendations = new Set<string>();
 
-    if (issues.some(e => e.type === 'login_attempt' && e.details?.success === false)) {
-      recommendations.push('Enable two-factor authentication');
-      recommendations.push('Consider implementing account lockout policies');
-    }
+    events.forEach(event => {
+      if (event.details.recommendation) {
+        recommendations.add(event.details.recommendation);
+      }
+    });
 
-    if (issues.some(e => e.type === 'encryption_failure')) {
-      recommendations.push('Review encryption implementation');
-      recommendations.push('Update to latest cryptographic standards');
-    }
+    // Add general recommendations
+    recommendations.add('Enable automatic security updates');
+    recommendations.add('Use strong, unique passwords');
+    recommendations.add('Keep browser updated');
 
-    if (issues.some(e => e.details?.issue === 'Not using HTTPS')) {
-      recommendations.push('Migrate to HTTPS immediately');
-    }
-
-    if (issues.some(e => e.details?.issue === 'Developer tools detected')) {
-      recommendations.push('Implement anti-debugging measures');
-      recommendations.push('Add tamper detection');
-    }
-
-    return recommendations;
+    return Array.from(recommendations);
   }
 
-  // Monitoring jarayonini boshlash
-  async startMonitoring(): Promise<void> {
-    try {
-      this.isMonitoring = true;
-
-      // Browser xavfsizligini tekshirish
-      const browserIssues = this.checkBrowserSecurity();
-      browserIssues.forEach(issue => this.logSecurityEvent(issue));
-
-      // Xotira xavfsizligini tekshirish
-      await this.checkMemorySecurity();
-
-      // Tarmoq monitoringini boshlash
-      this.monitorNetworkSecurity();
-
-      // Har 10 daqiqada tekshirish (spam ni kamaytirish uchun)
-      this.intervalId = setInterval(async () => {
-        if (this.isMonitoring) {
-          try {
-            const issues = this.checkBrowserSecurity();
-            if (issues.length > 0) {
-              issues.forEach(issue => this.logSecurityEvent(issue));
-            }
-            await this.checkMemorySecurity();
-          } catch (error) {
-            // Silent error handling - no console spam
-            if (process.env.NODE_ENV === 'development') {
-              console.debug('Security check completed');
-            }
-          }
-        }
-      }, 600000); // 10 minutes
-    } catch (error) {
-      console.error('Security monitoring start failed:', error);
-      throw error;
-    }
+  // Get security events
+  getSecurityEvents(): SecurityEvent[] {
+    return [...this.securityEvents];
   }
 
-  // Monitoringni to'xtatish
+  // Stop monitoring with proper cleanup
   stopMonitoring(): void {
     this.isMonitoring = false;
-    // Clear intervals and cleanup
+    
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
+    
+    console.log('🛡️ Security monitoring stopped');
   }
 
-  private intervalId: NodeJS.Timeout | null = null;
-
-  // Tozalash
+  // Cleanup method
   cleanup(): void {
-    this.isMonitoring = false; // Monitoringni to'xtatish
-    this.events = [];
-    this.alertCallbacks = [];
-    this.anomalyCodes.clear();
-    // Potentially clear intervals here if needed for full cleanup
+    this.stopMonitoring();
+    this.securityEvents = [];
+  }
+
+  // Check if monitoring is active
+  isActive(): boolean {
+    return this.isMonitoring;
+  }
+
+  // Get monitoring status
+  getStatus(): { active: boolean; eventCount: number; lastCheck: number } {
+    return {
+      active: this.isMonitoring,
+      eventCount: this.securityEvents.length,
+      lastCheck: this.lastCheck
+    };
   }
 }
 
-export const securityMonitor = SecurityMonitor.getInstance();
-
-// Xavfsizlik monitoring tizimi
-export const initializeSecurityMonitoring = async (): Promise<void> => {
-  try {
-    await securityMonitor.startMonitoring();
-  } catch (error) {
-    console.warn('Security monitoring initialization failed:', error);
-  }
-};
-
-// Enhanced error handling with throttling
-if (typeof window !== 'undefined') {
-  let errorCount = 0;
-  const errorLimit = 5; // Reduced limit
-  const resetInterval = 300000; // 5 minutes instead of 1 minute
-
-  setInterval(() => { errorCount = 0; }, resetInterval);
-
-  // Better global error monitoring with reduced sensitivity
-  window.addEventListener('unhandledrejection', (event) => {
-    if (errorCount >= errorLimit) {
-      event.preventDefault();
-      return;
-    }
-
-    const reason = event.reason?.message || event.reason || '';
-
-    // Only log critical errors
-    if (reason.includes('CRITICAL') || reason.includes('SECURITY BREACH')) {
-      errorCount++;
-      try {
-        securityMonitor.logSecurityEvent({
-          type: 'unusual_activity',
-          severity: 'high',
-          details: {
-            message: 'Critical application error',
-            reason: reason.substring(0, 80),
-            count: errorCount
-          }
-        });
-      } catch {
-        // Silent failure
-      }
-    }
-    event.preventDefault();
-  });
-
-  // Simplified error recovery
-  window.addEventListener('error', (event) => {
-    if (errorCount >= errorLimit) return;
-
-    // Only react to critical errors
-    if (event.message?.includes('Network Error') && errorCount < 2) {
-      errorCount++;
-      if (process.env.NODE_ENV === 'development') {
-        console.debug('Network error detected, monitoring...');
-      }
-    }
-  });
-}
+// Export singleton instance
+export const securityMonitor = new SecurityMonitor();

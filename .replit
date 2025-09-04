@@ -23,7 +23,7 @@ externalPort = 8080
 PORT = "5000"
 
 [workflows]
-runButton = "Ultra Development Stack"
+runButton = "Ultra Production Stack"
 
 [[workflows.workflow]]
 name = "Project"
@@ -590,6 +590,47 @@ args = "export WS_PORT=8080"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "go run server/websocket.go"
+
+[[workflows.workflow]]
+name = "Ultra Production Stack"
+author = 45696961
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🚀 Starting Ultra Production Stack...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🦀 Building Rust components...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cargo build --release --quiet"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🌐 Starting Go WebSocket server...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "export WS_PORT=8080"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go run server/websocket.go &"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "sleep 3"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"⚡ Starting Node.js production server...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
 
 [agent]
 expertMode = true

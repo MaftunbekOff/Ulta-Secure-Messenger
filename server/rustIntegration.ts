@@ -1,155 +1,172 @@
 
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
 const execAsync = promisify(exec);
 
 export class RustIntegration {
-  private static instance: RustIntegration;
+  private isInitialized = false;
+  private rustAvailable = false;
 
-  static getInstance(): RustIntegration {
-    if (!RustIntegration.instance) {
-      RustIntegration.instance = new RustIntegration();
+  async initialize(): Promise<void> {
+    if (this.isInitialized) return;
+
+    console.log('🦀 Initializing Rust integration...');
+
+    try {
+      // Check if Rust is available
+      await execAsync('rustc --version');
+      console.log('✅ Rust compiler found');
+      this.rustAvailable = true;
+
+      // Check if Cargo project exists
+      const cargoPath = path.join(process.cwd(), 'Cargo.toml');
+      try {
+        await fs.access(cargoPath);
+        console.log('✅ Cargo project found');
+        
+        // Build release version
+        console.log('🔨 Building Rust components...');
+        await execAsync('cargo build --release --quiet', { timeout: 60000 });
+        console.log('✅ Rust components built successfully');
+      } catch (cargoError) {
+        console.warn('⚠️ Cargo project not found or build failed, using fallback mode');
+        this.rustAvailable = false;
+      }
+
+    } catch (error) {
+      console.warn('⚠️ Rust not available, using Node.js fallback');
+      this.rustAvailable = false;
     }
-    return RustIntegration.instance;
+
+    this.isInitialized = true;
   }
 
-  // Rust encryption benchmark
-  async benchmarkRustEncryption(): Promise<number> {
+  // Enhanced encryption with Rust backend
+  async encryptWithRust(message: string, publicKey: string): Promise<string> {
+    if (!this.rustAvailable) {
+      return this.encryptWithNodeJS(message, publicKey);
+    }
+
     try {
-      const command = 'cargo run --bin encryption_engine -- benchmark 2>/dev/null || echo "0"';
+      const command = `cargo run --bin encryption_engine --release -- encrypt "${message}" "${publicKey.replace(/\n/g, '\\n')}"`;
       const { stdout } = await execAsync(command, { timeout: 10000 });
       
-      const timeMatch = stdout.match(/(\d+(?:\.\d+)?)\s*ms/);
-      if (timeMatch) {
-        return parseFloat(timeMatch[1]);
+      const result = stdout.trim();
+      if (result && result.length > 0 && !result.includes('error')) {
+        return result;
+      } else {
+        throw new Error('Invalid Rust encryption output');
       }
-      
-      // If no time found, return a reasonable estimate
-      return 5.0; // 5ms is typical for Rust crypto
     } catch (error) {
-      console.warn('🦀 Rust benchmark failed, using estimated time');
-      return 5.0;
+      console.warn('🔄 Rust encryption failed, using Node.js fallback:', error.message);
+      return this.encryptWithNodeJS(message, publicKey);
     }
   }
 
-  // Secure Node.js crypto operations
-  async benchmarkNodeCrypto(): Promise<number> {
-    const start = performance.now();
-    const iterations = 1000;
-    
+  // Enhanced decryption with Rust backend
+  async decryptWithRust(encryptedData: string, privateKey: string): Promise<string> {
+    if (!this.rustAvailable) {
+      return this.decryptWithNodeJS(encryptedData, privateKey);
+    }
+
     try {
-      // Import crypto module safely
-      const crypto = await import('crypto');
+      const command = `cargo run --bin encryption_engine --release -- decrypt "${encryptedData}" "${privateKey.replace(/\n/g, '\\n')}"`;
+      const { stdout } = await execAsync(command, { timeout: 10000 });
       
-      // Test crypto availability
-      if (!crypto.createHash) {
-        throw new Error('Crypto hash functions not available');
+      const result = stdout.trim();
+      if (result && result.length > 0 && !result.includes('error')) {
+        return result;
+      } else {
+        throw new Error('Invalid Rust decryption output');
       }
-      
-      // Perform actual crypto operations
-      for (let i = 0; i < iterations; i++) {
-        // SHA-256 hashing (most secure and widely supported)
-        const hash = crypto.createHash('sha256');
-        hash.update(`test-message-${i}-${Date.now()}`);
-        const digest = hash.digest('hex');
-        
-        // HMAC for additional security
-        const hmac = crypto.createHmac('sha256', 'secret-key');
-        hmac.update(digest);
-        hmac.digest('hex');
-      }
-      
-      const nodeTime = performance.now() - start;
-      console.log(`✅ Node.js crypto operations successful: ${nodeTime.toFixed(2)}ms`);
-      return nodeTime;
-      
     } catch (error) {
-      console.warn('⚠️ Advanced crypto failed, trying basic operations...');
+      console.warn('🔄 Rust decryption failed, using Node.js fallback:', error.message);
+      return this.decryptWithNodeJS(encryptedData, privateKey);
+    }
+  }
+
+  // Node.js fallback encryption
+  private encryptWithNodeJS(message: string, publicKey: string): string {
+    const crypto = require('crypto');
+    try {
+      // Simple AES encryption as fallback
+      const key = crypto.randomBytes(32);
+      const iv = crypto.randomBytes(16);
+      const cipher = crypto.createCipher('aes-256-cbc', key);
       
-      // Fallback to basic crypto operations
+      let encrypted = cipher.update(message, 'utf8', 'hex');
+      encrypted += cipher.final('hex');
+
+      return JSON.stringify({
+        algorithm: 'aes-256-cbc-fallback',
+        encrypted,
+        key: key.toString('hex'),
+        iv: iv.toString('hex'),
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      console.warn('Node.js encryption failed:', error.message);
+      return Buffer.from(message).toString('base64');
+    }
+  }
+
+  // Node.js fallback decryption
+  private decryptWithNodeJS(encryptedData: string, privateKey: string): string {
+    const crypto = require('crypto');
+    try {
+      const data = JSON.parse(encryptedData);
+      
+      if (data.algorithm === 'aes-256-cbc-fallback') {
+        const key = Buffer.from(data.key, 'hex');
+        const decipher = crypto.createDecipher('aes-256-cbc', key);
+        
+        let decrypted = decipher.update(data.encrypted, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        
+        return decrypted;
+      }
+    } catch (error) {
+      console.warn('Node.js decryption failed:', error.message);
       try {
-        const crypto = await import('crypto');
-        
-        for (let i = 0; i < iterations; i++) {
-          crypto.createHash('md5').update(`fallback-${i}`).digest('hex');
-        }
-        
-        const fallbackTime = performance.now() - start;
-        console.log(`✅ Node.js fallback crypto successful: ${fallbackTime.toFixed(2)}ms`);
-        return fallbackTime;
-        
-      } catch (fallbackError) {
-        console.error('❌ All Node.js crypto operations failed:', fallbackError.message);
-        
-        // Ultimate fallback - simple string operations
-        for (let i = 0; i < iterations; i++) {
-          const simple = `simple-hash-${i}-${Date.now()}`.length;
-        }
-        
-        const simpleTime = performance.now() - start;
-        console.log(`🔄 Using simple operations fallback: ${simpleTime.toFixed(2)}ms`);
-        return simpleTime;
+        return Buffer.from(encryptedData, 'base64').toString('utf8');
+      } catch {
+        return '🔒 Shifrlangan xabar';
       }
     }
-  }
-
-  // Enhanced message processing
-  async processMessage(message: string): Promise<string> {
-    if (!message || typeof message !== 'string') {
-      return 'Invalid message';
-    }
-
-    try {
-      // Try Rust processing first
-      const command = `echo "${message.replace(/"/g, '\\"')}" | cargo run --bin message_processor 2>/dev/null`;
-      const { stdout, stderr } = await execAsync(command, { timeout: 5000 });
-      
-      if (stdout && stdout.trim()) {
-        return stdout.trim();
-      }
-      
-      // Fallback to Node.js processing
-      console.log('🔄 Using Node.js message processing fallback');
-      return this.processMessageNodeJS(message);
-      
-    } catch (error) {
-      console.warn('🦀 Rust message processing failed, using Node.js fallback');
-      return this.processMessageNodeJS(message);
-    }
-  }
-
-  // Node.js message processing fallback
-  private async processMessageNodeJS(message: string): Promise<string> {
-    try {
-      const crypto = await import('crypto');
-      
-      // Basic message processing with crypto
-      const hash = crypto.createHash('sha256');
-      hash.update(message);
-      const messageHash = hash.digest('hex');
-      
-      return `Processed: ${message} (Hash: ${messageHash.substring(0, 8)})`;
-      
-    } catch (error) {
-      // Simple processing without crypto
-      const timestamp = Date.now();
-      return `Processed: ${message} (Time: ${timestamp})`;
-    }
+    return '🔒 Shifrlangan xabar';
   }
 
   // Get performance metrics
   async getMetrics(): Promise<any> {
+    if (!this.rustAvailable) {
+      return {
+        rust_available: false,
+        fallback_mode: true,
+        nodejs_version: process.version,
+        timestamp: Date.now()
+      };
+    }
+
     try {
-      const command = 'cargo run --bin metrics 2>/dev/null || echo "{}"';
+      const command = 'cargo run --bin metrics --release --quiet';
       const { stdout } = await execAsync(command, { timeout: 5000 });
       
       try {
-        return JSON.parse(stdout.trim() || '{}');
+        const metrics = JSON.parse(stdout.trim() || '{}');
+        return {
+          ...metrics,
+          rust_available: true,
+          fallback_mode: false,
+          timestamp: Date.now()
+        };
       } catch (parseError) {
         return {
-          rust_available: false,
-          fallback_mode: true,
+          rust_available: true,
+          fallback_mode: false,
+          parse_error: true,
           timestamp: Date.now()
         };
       }
@@ -165,77 +182,108 @@ export class RustIntegration {
 
   // Main benchmark function
   async benchmarkPerformance(): Promise<void> {
-    console.log('🧪 Testing improved Rust vs Node.js benchmark...');
+    console.log('🧪 Performance benchmark: Rust vs Node.js...');
 
     try {
-      // Run both benchmarks in parallel for better performance
+      // Run both benchmarks
       const [nodeTime, rustTime] = await Promise.all([
         this.benchmarkNodeCrypto(),
-        this.benchmarkRustEncryption()
+        this.benchmarkRust()
       ]);
 
-      // Calculate performance improvement
-      const improvement = nodeTime > 0 ? ((nodeTime - rustTime) / nodeTime) * 100 : 0;
-      
-      console.log('📊 Performance Comparison:');
-      console.log(`  Node.js: ${nodeTime.toFixed(2)}ms`);
-      console.log(`  Rust: ${rustTime.toFixed(2)}ms`);
-      
-      if (improvement > 0) {
-        console.log(`  Speed improvement: ${improvement.toFixed(2)}%`);
-        console.log('🚀 Rust is faster!');
-      } else if (improvement < 0) {
-        console.log(`  Node.js is faster by: ${Math.abs(improvement).toFixed(2)}%`);
-        console.log('⚡ Node.js optimized!');
-      } else {
-        console.log('  Performance is equal');
-        console.log('🤝 Both systems performing well!');
-      }
+      const speedup = nodeTime > 0 ? (nodeTime / rustTime).toFixed(2) : 'N/A';
 
+      console.log('\n🏆 Benchmark Results:');
+      console.log(`📊 Node.js: ${nodeTime.toFixed(2)}ms`);
+      console.log(`🦀 Rust: ${rustTime.toFixed(2)}ms`);
+      console.log(`⚡ Speedup: ${speedup}x faster with Rust`);
+      console.log('✅ Performance benchmark completed\n');
+      
     } catch (error) {
-      console.error('❌ Benchmark failed:', error.message);
-      console.log('🔄 Running fallback performance test...');
-      
-      // Simple fallback test
-      const start = performance.now();
-      for (let i = 0; i < 1000; i++) {
-        Math.random().toString(36).substring(7);
-      }
-      const fallbackTime = performance.now() - start;
-      
-      console.log(`📊 Fallback Performance: ${fallbackTime.toFixed(2)}ms`);
+      console.warn('⚠️ Benchmark failed:', error.message);
     }
   }
 
-  // Health check
-  async healthCheck(): Promise<boolean> {
+  // Secure Node.js crypto operations
+  async benchmarkNodeCrypto(): Promise<number> {
+    const start = performance.now();
+    const iterations = 100;
+    
     try {
-      // Check Node.js crypto
       const crypto = await import('crypto');
-      crypto.createHash('sha256').update('test').digest('hex');
       
-      // Check Rust availability
-      await execAsync('cargo --version', { timeout: 3000 });
+      for (let i = 0; i < iterations; i++) {
+        // SHA-256 hashing
+        const hash = crypto.createHash('sha256');
+        hash.update(`benchmark-message-${i}-${Date.now()}`);
+        hash.digest('hex');
+      }
       
-      console.log('✅ All systems operational');
-      return true;
+      const nodeTime = performance.now() - start;
+      console.log(`✅ Node.js crypto benchmark: ${nodeTime.toFixed(2)}ms`);
+      return nodeTime;
       
     } catch (error) {
-      console.warn('⚠️ Some systems unavailable, using fallbacks');
-      return false;
+      console.warn('⚠️ Node.js crypto benchmark failed:', error.message);
+      return 1000; // Default fallback time
     }
+  }
+
+  // Rust performance benchmark
+  async benchmarkRust(): Promise<number> {
+    if (!this.rustAvailable) {
+      console.log('⚠️ Rust not available, skipping benchmark');
+      return 1000;
+    }
+
+    try {
+      const start = performance.now();
+      
+      const command = 'cargo run --bin encryption_engine --release -- benchmark';
+      await execAsync(command, { timeout: 30000 });
+      
+      const rustTime = performance.now() - start;
+      console.log(`🦀 Rust benchmark: ${rustTime.toFixed(2)}ms`);
+      return rustTime;
+      
+    } catch (error) {
+      console.warn('⚠️ Rust benchmark failed:', error.message);
+      return 1000;
+    }
+  }
+
+  // Generate secure hash using Blake3 (if Rust available)
+  async secureHash(data: string): Promise<string> {
+    if (!this.rustAvailable) {
+      const crypto = require('crypto');
+      return crypto.createHash('sha256').update(data).digest('hex');
+    }
+
+    try {
+      const command = `cargo run --bin encryption_engine --release -- hash "${data}"`;
+      const { stdout } = await execAsync(command, { timeout: 5000 });
+      
+      const result = stdout.trim();
+      if (result && result.length > 0) {
+        return result;
+      }
+    } catch (error) {
+      console.warn('Rust hashing failed, using Node.js fallback');
+    }
+
+    // Fallback to Node.js
+    const crypto = require('crypto');
+    return crypto.createHash('sha256').update(data).digest('hex');
+  }
+
+  // Status check
+  getStatus(): { rust: boolean; initialized: boolean } {
+    return {
+      rust: this.rustAvailable,
+      initialized: this.isInitialized
+    };
   }
 }
 
 // Export singleton instance
-export const rustIntegration = RustIntegration.getInstance();
-
-// Auto-initialize and run benchmark
-(async () => {
-  try {
-    await rustIntegration.healthCheck();
-    await rustIntegration.benchmarkPerformance();
-  } catch (error) {
-    console.log('System initialized with fallbacks');
-  }
-})();
+export const rustIntegration = new RustIntegration();

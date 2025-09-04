@@ -1,399 +1,317 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Video, Phone, Info, Users, Shield } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import MessageBubble from "./message-bubble";
-import MessageInput from "./message-input";
-import { getAuthHeaders } from "@/lib/authUtils";
-import { useAuth } from "@/hooks/useAuth";
-import { useWebSocket } from "@/hooks/useWebSocket";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { encryptMessage, isMilitaryEncryptionAvailable } from "@/lib/militaryEncryption";
-import type { Chat, Message, User } from "@shared/schema";
-import { encryptionManager } from "@/lib/encryptionIntegration";
+import React, { useState, useEffect, useRef } from 'react';
+import { Card, CardContent } from '../ui/card';
+import { Button } from '../ui/button';
+import { MessageBubble } from './message-bubble';
+import { MessageInput } from './message-input';
+import { LoadingSpinner } from './LoadingSpinner';
+import { useWebSocket } from '../../hooks/useWebSocket';
+
+interface Message {
+  id: string;
+  content: string;
+  senderId: string;
+  senderName: string;
+  timestamp: number;
+  chatId: string;
+  encrypted?: boolean;
+  messageType?: 'text' | 'image' | 'file' | 'system';
+  deliveryStatus?: 'sending' | 'sent' | 'delivered' | 'read';
+}
 
 interface ChatWindowProps {
   chatId: string;
-  isMobile?: boolean;
+  currentUserId: string;
+  currentUserName: string;
 }
 
-type MessageWithSender = Message & { sender: User };
-type ChatWithExtras = Chat & {
-  lastMessage?: Message & { sender: User };
-  unreadCount: number;
-  otherUser?: User;
-  members?: Array<{ user: User }>;
-};
-
-export default function ChatWindow({ chatId, isMobile = false }: ChatWindowProps) {
-  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+export function ChatWindow({ chatId, currentUserId, currentUserName }: ChatWindowProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
-  const { user: currentUser } = useAuth(); // Renamed 'user' to 'currentUser' to avoid conflict
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const { lastMessage, joinChat, sendTyping, isConnected: wsConnected } = useWebSocket(); // Renamed 'isConnected' to 'wsConnected'
 
-  // Fetch chat details
-  const { data: chat } = useQuery({
-    queryKey: ["/api/chats", chatId],
-    enabled: !!currentUser,
-    queryFn: async (): Promise<ChatWithExtras> => {
-      const response = await fetch(`/api/chats/${chatId}`, {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
-      return response.json();
-    },
-  });
+  // WebSocket connection
+  const { 
+    socket, 
+    sendMessage: wsSendMessage, 
+    connected: wsConnected,
+    error: wsError 
+  } = useWebSocket(currentUserId);
 
-  // State for pagination
-  const [allMessages, setAllMessages] = useState<MessageWithSender[]>([]);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  // Scroll to bottom when new messages arrive
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
-  // Get chat messages with aggressive caching
-  const { data: initialMessages = [], isLoading, refetch } = useQuery({
-    queryKey: ["/api/chats", chatId, "messages"],
-    queryFn: async (): Promise<MessageWithSender[]> => {
-      const response = await fetch(`/api/chats/${chatId}/messages?limit=50&offset=0`, {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
-      return response.json();
-    },
-    enabled: !!chatId,
-    staleTime: 600000, // 10 minutes - even longer cache
-    gcTime: 3600000, // 1 hour garbage collection
-    refetchOnWindowFocus: false, // Don't refetch on window focus
-    refetchOnMount: false, // Don't refetch on component mount if data exists
-    retry: 1, // Reduce retry attempts
-  });
-
-  // Update all messages when initial messages change
+  // Load chat messages on mount
   useEffect(() => {
-    if (initialMessages.length > 0) {
-      setAllMessages(initialMessages);
-      setHasMoreMessages(initialMessages.length === 50); // If we got full batch, there might be more
+    loadChatMessages();
+  }, [chatId]);
+
+  // Handle WebSocket connection status
+  useEffect(() => {
+    setIsConnected(wsConnected);
+    if (wsError) {
+      setError(`Connection error: ${wsError}`);
     }
-  }, [initialMessages]);
+  }, [wsConnected, wsError]);
 
-  // Function to load more messages
-  const loadMoreMessages = async () => {
-    if (isLoadingMore || !hasMoreMessages) return;
+  // Set up message handler for WebSocket
+  useEffect(() => {
+    if (!socket) return;
 
-    setIsLoadingMore(true);
-    try {
-      const response = await fetch(`/api/chats/${chatId}/messages?limit=50&offset=${allMessages.length}`, {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
+    // Define message handler function
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'message' && data.chatId === chatId) {
+          const newMessage: Message = {
+            id: data.messageId || `msg_${Date.now()}_${Math.random()}`,
+            content: data.content,
+            senderId: data.userId || data.senderId,
+            senderName: data.senderName || 'Unknown User',
+            timestamp: data.timestamp || Date.now(),
+            chatId: data.chatId,
+            encrypted: data.encrypted,
+            messageType: data.messageType || 'text',
+            deliveryStatus: 'delivered'
+          };
+
+          setMessages(prev => [...prev, newMessage]);
+          scrollToBottom();
+        }
+      } catch (error) {
+        console.warn('Failed to parse WebSocket message:', error);
       }
-      const olderMessages: MessageWithSender[] = await response.json();
+    };
 
-      if (olderMessages.length === 0) {
-        setHasMoreMessages(false);
+    // Add event listener
+    socket.addEventListener('message', handleMessage);
+
+    // Cleanup
+    return () => {
+      socket.removeEventListener('message', handleMessage);
+    };
+  }, [socket, chatId]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Load chat messages from API
+  const loadChatMessages = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(`/api/chats/${chatId}/messages`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (data.messages && Array.isArray(data.messages)) {
+        const formattedMessages: Message[] = data.messages.map((msg: any) => ({
+          id: msg.id,
+          content: msg.content,
+          senderId: msg.senderId,
+          senderName: msg.senderName || 'Unknown User',
+          timestamp: msg.timestamp,
+          chatId: msg.chatId,
+          encrypted: msg.encrypted,
+          messageType: msg.messageType || 'text',
+          deliveryStatus: 'delivered'
+        }));
+
+        setMessages(formattedMessages);
       } else {
-        // Prepend older messages to the beginning of the array
-        setAllMessages(prev => [...olderMessages, ...prev]);
-        setHasMoreMessages(olderMessages.length === 50);
+        setMessages([]);
       }
     } catch (error) {
-      console.error('Failed to load more messages:', error);
+      console.error('Failed to load messages:', error);
+      setError(`Failed to load messages: ${error.message}`);
+      setMessages([]);
     } finally {
-      setIsLoadingMore(false);
+      setLoading(false);
     }
   };
 
-  // Send message mutation with military-grade encryption
-  const sendMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
-      let encryptedContent = content;
+  // Handle sending new message
+  const handleSendMessage = async (content: string) => {
+    if (!content.trim() || !isConnected) {
+      return;
+    }
 
-      // Apply military-grade end-to-end encryption if available
-      if (isMilitaryEncryptionAvailable() && chat?.otherUser?.publicKey) {
-        try {
-          encryptedContent = await encryptMessage(content, chat.otherUser.publicKey);
-        } catch (error) {
-          console.error('Military encryption failed, sending without encryption:', error);
-          // Fallback to unencrypted if encryption fails
+    const tempMessage: Message = {
+      id: `temp_${Date.now()}_${Math.random()}`,
+      content,
+      senderId: currentUserId,
+      senderName: currentUserName,
+      timestamp: Date.now(),
+      chatId,
+      messageType: 'text',
+      deliveryStatus: 'sending'
+    };
+
+    // Add temporary message to UI
+    setMessages(prev => [...prev, tempMessage]);
+    scrollToBottom();
+
+    try {
+      // Send via WebSocket if connected
+      if (wsSendMessage) {
+        await wsSendMessage({
+          type: 'message',
+          content,
+          chatId,
+          userId: currentUserId,
+          senderName: currentUserName,
+          timestamp: Date.now(),
+          messageId: tempMessage.id
+        });
+
+        // Update message status
+        setMessages(prev => prev.map(msg => 
+          msg.id === tempMessage.id 
+            ? { ...msg, deliveryStatus: 'sent' }
+            : msg
+        ));
+      } else {
+        // Fallback to HTTP API
+        const response = await fetch(`/api/chats/${chatId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content,
+            senderId: currentUserId,
+            senderName: currentUserName,
+            messageType: 'text'
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
+
+        const result = await response.json();
+
+        // Update with real message ID
+        setMessages(prev => prev.map(msg => 
+          msg.id === tempMessage.id 
+            ? { ...msg, id: result.messageId, deliveryStatus: 'sent' }
+            : msg
+        ));
       }
+    } catch (error) {
+      console.error('Failed to send message:', error);
 
-      const response = await apiRequest("POST", `/api/chats/${chatId}/messages`, {
-        content: encryptedContent,
-        messageType: "text",
-      });
-      return response.json();
-    },
-    onSuccess: (newMessage) => {
-      // Optimistic update - add new message to cache immediately
-      queryClient.setQueryData(["/api/chats", chatId, "messages"], (oldMessages: any) => {
-        return oldMessages ? [...oldMessages, newMessage] : [newMessage];
-      });
-      // Only invalidate chat list to update last message preview
-      queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
+      // Mark message as failed
+      setMessages(prev => prev.map(msg => 
+        msg.id === tempMessage.id 
+          ? { ...msg, deliveryStatus: 'sending', content: `❌ ${msg.content}` }
+          : msg
+      ));
 
-  // Handle WebSocket messages
-  useEffect(() => {
-    if (!lastMessage) return;
-
-    switch (lastMessage.type) {
-      case 'message':
-        if (lastMessage.chatId === chatId && lastMessage.senderId !== currentUser?.id) {
-          // Refresh messages to show new message
-          queryClient.invalidateQueries({ queryKey: ["/api/chats", chatId, "messages"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
-        }
-        break;
-
-      case 'typing':
-        if (lastMessage.chatId === chatId && lastMessage.senderId !== currentUser?.id) {
-          setTypingUsers(prev => new Set(prev).add(lastMessage.senderId!));
-
-          // Clear typing indicator after 3 seconds
-          if (typingTimeoutRef.current) {
-            clearTimeout(typingTimeoutRef.current);
-          }
-          typingTimeoutRef.current = setTimeout(() => {
-            setTypingUsers(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(lastMessage.senderId!);
-              return newSet;
-            });
-          }, 3000);
-        }
-        break;
-    }
-  }, [lastMessage, chatId, currentUser?.id, queryClient]);
-
-  // Join chat room on mount
-  // The original onMessage function was undefined and caused an error.
-  // This useEffect hook is modified to check if onMessage is defined before calling it.
-  useEffect(() => {
-    if (wsConnected && currentUser && joinChat) { // Ensure joinChat is available
-      joinChat({ // Pass chatId and userId directly to joinChat
-        chatId,
-        userId: currentUser.id,
-        token: localStorage.getItem('token') || ''
-      });
-    }
-  }, [wsConnected, currentUser, chatId, joinChat]); // Include joinChat in dependencies
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [allMessages]); // Depend on allMessages to trigger scroll when new messages are added
-
-  const handleSendMessage = (content: string) => {
-    sendMessageMutation.mutate(content);
-  };
-
-  const handleTyping = () => {
-    if (wsConnected) {
-      sendTyping(chatId);
+      setError(`Failed to send message: ${error.message}`);
     }
   };
 
-  const getChatDisplayName = () => {
-    if (!chat) return "";
-    if (chat.isGroup) {
-      return chat.name || "Group Chat";
-    }
-    return chat.otherUser?.firstName && chat.otherUser?.lastName
-      ? `${chat.otherUser.firstName} ${chat.otherUser.lastName}`
-      : chat.otherUser?.username || "Unknown User";
+  // Retry connection
+  const retryConnection = () => {
+    setError(null);
+    window.location.reload();
   };
 
-  const getChatAvatar = () => {
-    if (!chat) return null;
-    if (chat.isGroup) {
-      return <Users className="h-6 w-6" />;
-    }
-    const avatarText = chat.otherUser?.username?.charAt(0).toUpperCase() || "?";
+  if (loading) {
     return (
-      <Avatar className="h-10 w-10">
-        <AvatarImage src={chat.otherUser?.profileImageUrl || undefined} />
-        <AvatarFallback className="bg-secondary text-secondary-foreground font-semibold">
-          {avatarText}
-        </AvatarFallback>
-      </Avatar>
-    );
-  };
-
-  const getOnlineStatus = () => {
-    if (!chat || chat.isGroup) return null;
-    return chat.otherUser?.isOnline ? (
-      <div className="flex items-center space-x-1">
-        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-        <span className="text-xs text-muted-foreground">Online</span>
-      </div>
-    ) : (
-      <span className="text-xs text-muted-foreground">
-        {chat.otherUser?.lastSeen
-          ? `Last seen ${new Date(chat.otherUser.lastSeen).toLocaleDateString()}`
-          : "Offline"
-        }
-      </span>
-    );
-  };
-
-  if (!currentUser) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-muted-foreground">Please log in to access chat.</div>
-      </div>
-    );
-  }
-
-  if (isLoading && allMessages.length === 0) { // Show loading only if no messages are loaded yet
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-muted-foreground">Loading messages...</div>
-      </div>
+      <Card className="flex-1 flex items-center justify-center">
+        <CardContent>
+          <LoadingSpinner />
+          <p className="mt-4 text-center text-muted-foreground">Loading messages...</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col">
-      {/* Chat Header */}
-      <div className={`flex items-center justify-between ${isMobile ? 'p-3' : 'p-4'} border-b border-border bg-card`}>
-        <div className="flex items-center space-x-3">
-          {getChatAvatar()}
-          <div>
-            <h3 className="font-medium text-sm" data-testid="chat-title">
-              {getChatDisplayName()}
-            </h3>
-            {getOnlineStatus()}
-          </div>
-        </div>
-        <div className={`flex items-center ${isMobile ? 'space-x-1' : 'space-x-2'}`}>
+    <div className="flex-1 flex flex-col h-full">
+      {/* Connection Status */}
+      {!isConnected && (
+        <div className="bg-yellow-100 dark:bg-yellow-900/20 p-2 text-center text-sm">
+          <span className="text-yellow-800 dark:text-yellow-200">
+            ⚠️ Connection issues - messages may not be real-time
+          </span>
           <Button
-            variant="ghost"
+            variant="link"
             size="sm"
-            className="p-2 h-auto"
-            data-testid="button-video-call"
+            className="ml-2 h-auto p-0 text-yellow-800 dark:text-yellow-200"
+            onClick={retryConnection}
           >
-            <Video className={`${isMobile ? 'h-5 w-5' : 'h-4 w-4'} text-muted-foreground`} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-2 h-auto"
-            data-testid="button-voice-call"
-          >
-            <Phone className={`${isMobile ? 'h-5 w-5' : 'h-4 w-4'} text-muted-foreground`} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-2 h-auto"
-            data-testid="button-chat-info"
-          >
-            <Info className={`${isMobile ? 'h-5 w-5' : 'h-4 w-4'} text-muted-foreground`} />
+            Retry
           </Button>
         </div>
-      </div>
+      )}
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-100 dark:bg-red-900/20 p-3 text-center">
+          <span className="text-red-800 dark:text-red-200">{error}</span>
+          <Button
+            variant="link"
+            size="sm"
+            className="ml-2 h-auto p-0 text-red-800 dark:text-red-200"
+            onClick={() => setError(null)}
+          >
+            Dismiss
+          </Button>
+        </div>
+      )}
 
       {/* Messages Area */}
-      <div
-        className={`${isMobile ? 'messages-container p-4 space-y-4' : 'flex-1 p-4 space-y-4 custom-scrollbar'}`}
-        style={isMobile ? {
-          height: 'calc(100vh - 140px)',
-          maxHeight: 'calc(100vh - 140px)',
-          overflowY: 'auto',
-          WebkitOverflowScrolling: 'touch',
-          position: 'relative',
-          zIndex: 1
-        } : {
-          height: 'calc(100vh - 120px)',
-          maxHeight: 'calc(100vh - 120px)',
-          overflowY: 'auto',
-          position: 'relative'
-        }}
-        onScroll={(e) => {
-          const target = e.target as HTMLDivElement;
-          // Load more when scrolled near the top (20px from top)
-          if (target.scrollTop < 20 && hasMoreMessages && !isLoadingMore) {
-            const scrollHeight = target.scrollHeight;
-            loadMoreMessages().then(() => {
-              // Maintain scroll position after loading more messages
-              requestAnimationFrame(() => {
-                target.scrollTop = target.scrollHeight - scrollHeight;
-              });
-            });
-          }
-        }}
-      >
-        {isLoadingMore && (
-          <div className="text-center py-2 text-muted-foreground text-sm">
-            Loading older messages...
-          </div>
-        )}
-        {allMessages.map((message, index) => {
-            const isOwn = message.senderId === currentUser?.id;
-            // Guaranteed unique key with multiple fallbacks
-            const uniqueKey = message.id ?
-              `msg-${message.id}` :
-              `temp-${message.senderId || 'unknown'}-${index}-${message.timestamp || Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-            return (
-              <MessageBubble
-                key={uniqueKey}
-                message={message}
-                isOwn={isOwn}
-                isMobile={isMobile}
-              />
-            );
-          })}
-
-        {/* Typing Indicators */}
-        {typingUsers.size > 0 && (
-          <div className="flex items-start">
-            <div className="bg-card border border-border rounded-lg p-3">
-              <div className="flex items-center space-x-1">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+      <Card className="flex-1 flex flex-col">
+        <CardContent className="flex-1 flex flex-col p-4">
+          <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+            {messages.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <div className="text-center">
+                  <p className="text-lg mb-2">No messages yet</p>
+                  <p className="text-sm">Start a conversation!</p>
                 </div>
-                <span className="text-xs text-muted-foreground ml-2">typing...</span>
               </div>
-            </div>
+            ) : (
+              messages.map((message) => (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  isOwn={message.senderId === currentUserId}
+                  showSender={true}
+                />
+              ))
+            )}
+            <div ref={messagesEndRef} />
           </div>
-        )}
 
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Message Input */}
-      <MessageInput
-        onSendMessage={(content) => {
-          if (content.trim()) {
-            handleSendMessage(content);
-          }
-        }}
-        onTyping={handleTyping}
-        disabled={sendMessageMutation.isPending}
-        isMobile={isMobile}
-      />
+          {/* Message Input */}
+          <MessageInput
+            onSendMessage={handleSendMessage}
+            disabled={!isConnected}
+            placeholder={isConnected ? "Type a message..." : "Connecting..."}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }
