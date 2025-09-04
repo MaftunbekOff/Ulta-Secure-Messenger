@@ -472,7 +472,7 @@ args = "go mod tidy"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "go run server/websocket.go"
+args = "WS_PORT=8080 go run server/websocket.go"
 
 [[workflows.workflow]]
 name = "Full Stack Development"
