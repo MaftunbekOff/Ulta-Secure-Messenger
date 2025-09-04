@@ -146,7 +146,8 @@ impl RustEncryptionEngine {
         hex::encode(random_bytes)
     }
 
-    // Hash function using Blake3 (faster than SHA-3)
+    // Hash function using Blake3 (faster than SHA-3) - available if needed
+    #[allow(dead_code)]
     pub fn secure_hash(&self, data: &str) -> String {
         hex::encode(blake3::hash(data.as_bytes()).as_bytes())
     }
