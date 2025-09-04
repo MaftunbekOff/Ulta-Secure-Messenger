@@ -326,22 +326,48 @@ func main() {
 	if testRustIntegration() {
 		fmt.Println("✅ Rust components working correctly")
 	} else {
-		fmt.Println("⚠️ Rust integration issues detected")
+		fmt.Println("⚠️ Rust integration issues detected - continuing with reduced functionality")
 	}
 	
 	// Start Rust performance monitoring
 	go logPerformanceMetrics()
 
+	// Add CORS headers for WebSocket connections
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		// Add CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		
 		serveWS(hub, w, r)
+	})
+
+	// Add health check endpoint
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"healthy","service":"go-websocket","timestamp":"` + time.Now().Format(time.RFC3339) + `"}`))
 	})
 
 	fmt.Println("🚀 Polyglot Server starting:")
 	fmt.Println("  - Go WebSocket on :8080")
+	fmt.Println("  - Health check on :8080/health")
 	fmt.Println("  - Rust Message Processor integrated")
 	fmt.Println("  - Node.js API on :5000")
 	
-	log.Fatal(http.ListenAndServe("0.0.0.0:8080", nil))
+	server := &http.Server{
+		Addr:         "0.0.0.0:8080",
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+	
+	log.Fatal(server.ListenAndServe())
 }
 
 // Test Rust integration

@@ -8,8 +8,8 @@ packages = ["rustup", "go"]
 
 [deployment]
 deploymentTarget = "autoscale"
-build = ["npm", "run", "build"]
-run = ["npm", "run", "start"]
+build = ["sh", "-c", "npm run build"]
+run = ["sh", "-c", "npm start"]
 
 [[ports]]
 localPort = 5000
@@ -248,6 +248,19 @@ args = "go build server/websocket.go"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "echo \"✅ Rust va Go komponentlari tayyor!\""
+
+[[workflows.workflow]]
+name = "Optimized Polyglot Stack"
+author = 45696961
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go run server/websocket.go"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
 
 [agent]
 expertMode = true

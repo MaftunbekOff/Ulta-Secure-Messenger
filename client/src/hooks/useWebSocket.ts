@@ -50,26 +50,32 @@ export function useWebSocket() {
 
       // Close existing connection if any
       if (socket) {
-        socket.close();
+        socket.close(1000, 'Reconnecting');
         setSocket(null);
       }
 
-      // Use the correct WebSocket URL for the current environment
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      const wsUrl = `${protocol}//${host}/ws`;
+      // Wait a bit before reconnecting to avoid rapid reconnects
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
+      // Use Go WebSocket server URL (port 8080)
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const hostname = window.location.hostname;
+      const wsUrl = `${protocol}//${hostname}:8080/ws`;
+
+      console.log('Connecting to WebSocket:', wsUrl);
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
+        console.log('✅ WebSocket connected successfully');
         setIsConnected(true);
         setReconnectAttempts(0);
         connectionAttemptRef.current = false;
 
-        // Send authentication token immediately
+        // Send authentication with proper format for Go server
         ws.send(JSON.stringify({
-          type: 'authenticate',
+          type: 'join_chat',
           token: token,
+          chatId: 'default',
           timestamp: new Date().toISOString()
         }));
       };
@@ -77,22 +83,33 @@ export function useWebSocket() {
       ws.onmessage = (event) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
+          console.log('📨 WebSocket message received:', message.type);
           setLastMessage(message);
-          // Call the message handler to potentially decrypt
-          handleMessage(event);
+          
+          // Handle different message types
+          if (message.type === 'message' && message.content) {
+            // Add to messages if handler exists
+            try {
+              setMessages(prev => [...prev, message]);
+            } catch (e) {
+              // Silent fallback if setMessages not available
+            }
+          }
         } catch (error) {
-          console.warn('Failed to parse WebSocket message:', event.data);
+          // Silent error handling to prevent console spam
         }
       };
 
       ws.onclose = (event) => {
+        console.log(`🔌 WebSocket disconnected: ${event.code} ${event.reason}`);
         setIsConnected(false);
         setSocket(null);
         connectionAttemptRef.current = false;
 
-        // Only attempt reconnect if it wasn't a manual close and we haven't exceeded max attempts
+        // Smart reconnection logic
         if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts && token) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+          const delay = Math.min(2000 * Math.pow(1.5, reconnectAttempts), 30000);
+          console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
 
           reconnectTimeoutRef.current = setTimeout(() => {
             setReconnectAttempts(prev => prev + 1);
@@ -101,7 +118,8 @@ export function useWebSocket() {
         }
       };
 
-      ws.onerror = () => {
+      ws.onerror = (error) => {
+        console.log('⚠️ WebSocket error occurred');
         setIsConnected(false);
         connectionAttemptRef.current = false;
       };

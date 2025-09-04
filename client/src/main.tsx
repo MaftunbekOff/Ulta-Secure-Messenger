@@ -3,20 +3,37 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-// Minimal global error handling
+// Enhanced global error handling
 window.addEventListener('unhandledrejection', (event) => {
-  // Prevent all unhandled rejections from appearing in console
+  const reason = event.reason?.message || event.reason || 'Unknown rejection';
+  
+  // Only log non-network related errors in development
+  if (import.meta.env.DEV && 
+      !reason.includes('WebSocket') && 
+      !reason.includes('fetch') &&
+      !reason.includes('NetworkError')) {
+    console.warn('Unhandled Promise Rejection:', reason);
+  }
+  
   event.preventDefault();
 });
 
 window.addEventListener('error', (event) => {
   const message = event.error?.message || '';
   
-  // Silent handling for WebSocket and network errors
+  // Silent handling for expected network and WebSocket errors
   if (message.includes('WebSocket') || 
       message.includes('Failed to construct') ||
-      message.includes('fetch')) {
+      message.includes('fetch') ||
+      message.includes('NetworkError') ||
+      message.includes('ERR_INTERNET_DISCONNECTED')) {
     event.preventDefault();
+    return;
+  }
+  
+  // Log other errors in development only
+  if (import.meta.env.DEV) {
+    console.error('Global Error:', message);
   }
 });
 

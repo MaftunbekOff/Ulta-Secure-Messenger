@@ -74,23 +74,40 @@ app.use((req, res, next) => {
   // Initialize Rust components
   console.log('🦀 Rust komponentlarini ishga tushirish...');
 
-  // Rust health check
-  rustIntegration.healthCheck().then(isHealthy => {
+  // Rust health check with timeout
+  Promise.race([
+    rustIntegration.healthCheck(),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+  ]).then(isHealthy => {
     if (isHealthy) {
       console.log('✅ Rust komponentlari tayyor');
 
-      // Run performance benchmark
-      rustIntegration.benchmarkPerformance().catch(console.error);
+      // Run performance benchmark with error handling
+      rustIntegration.benchmarkPerformance().catch(error => {
+        console.warn('⚠️ Rust benchmark failed:', error.message);
+      });
 
-      // Get metrics
+      // Get metrics with error handling
       rustIntegration.getMetrics().then(metrics => {
         if (metrics) {
-          console.log('📊 Rust metrics:', metrics);
+          console.log('📊 Rust metrics:', JSON.stringify(metrics, null, 2));
         }
+      }).catch(error => {
+        console.warn('⚠️ Failed to get Rust metrics:', error.message);
       });
     } else {
-      console.warn('⚠️ Rust komponentlari ishlamayapti');
+      console.warn('⚠️ Rust komponentlari ishlamayapti - continuing without Rust integration');
     }
-  }).catch(console.error);
+  }).catch(error => {
+    console.warn('⚠️ Rust health check failed:', error.message, '- continuing without Rust integration');
+  });
+
+  // Start Go WebSocket server check
+  setTimeout(() => {
+    fetch('http://localhost:8080/health')
+      .then(res => res.json())
+      .then(data => console.log('✅ Go WebSocket server healthy:', data.status))
+      .catch(() => console.warn('⚠️ Go WebSocket server not responding - make sure to run it separately'));
+  }, 2000);
   });
 })();
