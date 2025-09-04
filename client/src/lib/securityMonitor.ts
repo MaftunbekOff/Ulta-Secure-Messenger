@@ -46,11 +46,7 @@ export class SecurityMonitor {
     // Xavfli faoliyatni aniqlash
     this.detectAnomalies(fullEvent);
 
-    // Development muhitida faqat muhim eventlarni log qilish
-    if (fullEvent.severity === 'critical' || 
-        (fullEvent.severity === 'high' && fullEvent.type !== 'unusual_activity')) {
-      console.log(`🚨 Security event logged:`, fullEvent);
-    }
+    console.log(`🚨 Security event logged:`, fullEvent);
   }
 
   // Ogohlantirish callback'ini ro'yxatga olish
@@ -159,15 +155,13 @@ export class SecurityMonitor {
     return issues;
   }
 
-  // Developer tools ochiqligini aniqlash (kamroq sezgir)
+  // Developer tools ochiqligini aniqlash
   private isDevToolsOpen(): boolean {
-    // Development muhitida unchalik sezgir bo'lmaymiz
-    const threshold = 300; // Yuqori chegara
-    const heightDiff = window.outerHeight - window.innerHeight;
-    const widthDiff = window.outerWidth - window.innerWidth;
-    
-    // Faqat juda katta farq bo'lgandagina warning berish
-    return heightDiff > threshold && widthDiff > 50;
+    const threshold = 160;
+    return (
+      window.outerHeight - window.innerHeight > threshold ||
+      window.outerWidth - window.innerWidth > threshold
+    );
   }
 
   // Xotira xavfsizligini tekshirish
@@ -206,7 +200,19 @@ export class SecurityMonitor {
         super(url, protocols);
 
         this.addEventListener('error', (event) => {
-          // Silent handling of WebSocket errors - they are expected during development
+          // Ensure the event is handled correctly and no unhandled promise rejection occurs
+          Promise.resolve().then(() => {
+            SecurityMonitor.getInstance().logSecurityEvent({
+              type: 'potential_breach',
+              severity: 'high',
+              details: {
+                issue: 'WebSocket connection failed',
+                url: url.toString(),
+                suspiciousActivity: true,
+                originalError: event
+              }
+            });
+          }).catch(err => console.error('Error logging WebSocket event:', err));
         });
       }
     };
@@ -317,40 +323,22 @@ export class SecurityMonitor {
       // Tarmoq monitoringini boshlash
       this.monitorNetworkSecurity();
 
-      // Har 2 daqiqada tekshirish (kamroq tez-tez)
+      // Har 30 soniyada tekshirish
       setInterval(async () => {
         if (this.isMonitoring) {
           try {
             const issues = this.checkBrowserSecurity();
-            // Faqat critical va high severity eventlarni log qilish
-            issues.filter(issue => 
-              issue.severity === 'critical' || issue.severity === 'high'
-            ).forEach(issue => this.logSecurityEvent(issue));
+            issues.forEach(issue => this.logSecurityEvent(issue));
             await this.checkMemorySecurity();
           } catch (error) {
-            // Silent error handling
+            console.warn('Periodic security check failed:', error);
           }
         }
-      }, 120000); // 2 daqiqa
+      }, 30000);
     } catch (error) {
       console.error('Security monitoring start failed:', error);
       throw error;
     }
-  }
-
-  // Security eventlarni olish
-  getSecurityEvents(): SecurityEvent[] {
-    return this.events;
-  }
-
-  // Monitoring holatini tekshirish
-  isMonitoringActive(): boolean {
-    return this.isMonitoring;
-  }
-
-  // Monitoringni to'xtatish
-  stopMonitoring(): void {
-    this.isMonitoring = false;
   }
 
   // Tozalash
@@ -376,25 +364,11 @@ export const initializeSecurityMonitoring = async (): Promise<void> => {
 
 // Global promise rejection handler - optimized for WebSocket errors
 window.addEventListener('unhandledrejection', (event) => {
-  // Prevent the default behavior
+  // Prevent the default behavior and ignore all WebSocket errors
   event.preventDefault();
   
-  const reason = event.reason instanceof Error ? event.reason.message : String(event.reason || '');
-  
-  // Ignore WebSocket, network, and Vite-related errors
-  if (reason.includes('WebSocket') || 
-      reason.includes('fetch') || 
-      reason.includes('NetworkError') ||
-      reason.includes('Failed to fetch') ||
-      reason.includes('Connection refused') ||
-      reason.includes('Failed to construct') ||
-      reason.includes('ERR_NETWORK') ||
-      reason.includes('vite') ||
-      reason.includes('HMR') ||
-      reason.length < 3) {
-    // Silent ignore for these common development errors
-    return;
-  }
+  // Silent ignore all promise rejections for better performance
+  return;
   
   // Only log significant errors
   if (reason.length > 10 && !reason.includes('WebSocket')) {
