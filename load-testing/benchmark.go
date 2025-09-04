@@ -34,8 +34,8 @@ func (lt *LoadTester) createConnection(userId int, wg *sync.WaitGroup) {
 
 	// Use your Replit WebSocket URL
 	u := url.URL{
-		Scheme: "wss",
-		Host:   "your-repl-name.your-username.repl.co", // Replace with your Replit URL
+		Scheme: "ws",
+		Host:   "0.0.0.0:8080", // Use local WebSocket for testing
 		Path:   "/ws",
 	}
 
