@@ -379,7 +379,11 @@ export default function ChatWindow({ chatId, isMobile = false }: ChatWindowProps
 
       {/* Message Input */}
       <MessageInput
-        onSendMessage={handleSendMessage}
+        onSendMessage={(content) => {
+          if (content.trim()) {
+            handleSendMessage(content);
+          }
+        }}
         onTyping={handleTyping}
         disabled={sendMessageMutation.isPending}
         isMobile={isMobile}

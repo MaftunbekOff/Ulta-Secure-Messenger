@@ -135,7 +135,7 @@ export class SecurityMonitor {
                            process.env.NODE_ENV === 'production');
       
       // Faqat production muhitida va kam chastotada tekshirish
-      if (!isProduction || Math.random() > 0.1) { // 10% chance to run
+      if (!isProduction || Math.random() > 0.01) { // 1% chance to run - reduced from 10%
         return issues; 
       }
 
@@ -364,11 +364,16 @@ export class SecurityMonitor {
             }
           }
         }
-      }, 300000); // 5 minutes instead of 30 seconds
+      }, 600000); // 10 minutes instead of 5 minutes
     } catch (error) {
       console.error('Security monitoring start failed:', error);
       throw error;
     }
+  }
+
+  // Monitoringni to'xtatish
+  stopMonitoring(): void {
+    this.isMonitoring = false;
   }
 
   // Tozalash

@@ -68,7 +68,7 @@ export function useWebSocket() {
     if (window.location.port && window.location.port !== '80' && window.location.port !== '443') {
       return `${protocol}//${hostname}:${window.location.port}/ws`;
     }
-    
+
     return `${protocol}//${hostname}/ws`;
   };
 
@@ -152,7 +152,7 @@ export function useWebSocket() {
       setIsConnecting(false);
       // Silent error handling - no console spam
     }
-  }, [isConnecting, socket, onMessage, reconnectAttempts, maxReconnectAttempts]);
+  }, [isConnecting, socket, reconnectAttempts, maxReconnectAttempts]);
 
   useEffect(() => {
     // Use HTTP polling instead of WebSocket for better stability

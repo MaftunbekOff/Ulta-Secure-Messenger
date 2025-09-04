@@ -17,7 +17,7 @@ export function SecurityDashboard() {
   // Security monitoring with encryption status
   useEffect(() => {
     const monitor = securityMonitor;
-    
+
     // Start monitoring without throwing errors
     monitor.startMonitoring().catch(error => {
       console.warn('Security monitoring failed to start:', error);
@@ -58,12 +58,18 @@ export function SecurityDashboard() {
 
     // Initial check
     updateSecurityReport();
-    
+
     const interval = setInterval(checkSecurityIssues, 60000); // Har 1 daqiqada
 
     return () => {
       clearInterval(interval);
-      monitor.stopMonitoring();
+      try {
+        if (monitor && typeof monitor.stopMonitoring === 'function') {
+          monitor.stopMonitoring();
+        }
+      } catch (error) {
+        console.warn('Security monitoring cleanup failed:', error);
+      }
     };
   }, []);
 
