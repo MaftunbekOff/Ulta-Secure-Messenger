@@ -662,9 +662,9 @@ export default function Sidebar({ selectedChatId, onSelectChat, isMobile = false
             const lastMessage = chat.lastMessage;
 
             // Get preview from the cached state
-            const messagePreview = lastMessage?.content ? 
-              (decryptedPreviews[chat.id] || "Loading...") : 
-              "No messages yet";
+            const messagePreview = lastMessage?.content 
+              ? (decryptedPreviews[chat.id] || "Loading...")
+              : "No messages yet";
 
             return (
               <div
