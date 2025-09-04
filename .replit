@@ -57,23 +57,6 @@ task = "shell.exec"
 args = "npm run dev"
 
 [[workflows.workflow]]
-name = "Polyglot Stack"
-author = 45696961
-mode = "parallel"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cargo build --release"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "go run server/websocket.go"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-
-[[workflows.workflow]]
 name = "Rust Development"
 author = 45696961
 mode = "sequential"
@@ -89,23 +72,6 @@ args = "cargo test"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cargo run --bin encryption_engine -- benchmark"
-
-[[workflows.workflow]]
-name = "Polyglot Development"
-author = 45696961
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cargo build --release"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "go mod download"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
 
 [[workflows.workflow]]
 name = "Polyglot Development"
