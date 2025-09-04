@@ -23,7 +23,7 @@ externalPort = 8080
 PORT = "5000"
 
 [workflows]
-runButton = "Ultra-Fast Development"
+runButton = "Ultra Performance Stack"
 
 [[workflows.workflow]]
 name = "Project"
@@ -313,6 +313,55 @@ mode = "parallel"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "go run server/websocket.go"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Ultra Performance Stack"
+author = 45696961
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🚀 Building Ultra Performance Stack...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"📦 Compiling C++ native modules...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "g++ -O3 -fPIC -shared -o server/native_crypto.so server/native_crypto.cpp -lssl -lcrypto || echo \"⚠️ C++ module compilation skipped\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🐍 Starting ML predictor...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python3 server/ml_predictor.py &"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🦀 Building Rust components...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cargo build --release"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🌐 Starting Go WebSocket server...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go run server/websocket.go &"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"⚡ Starting Node.js API...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"

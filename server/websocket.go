@@ -15,13 +15,79 @@ import (
 )
 
 type Hub struct {
-	clients    map[*Client]bool
-	broadcast  chan []byte
-	register   chan *Client
-	unregister chan *Client
-	chatRooms  map[string]map[*Client]bool
-	userChats  map[string]string // userId -> chatId
-	mutex      sync.RWMutex
+	clients      map[*Client]bool
+	broadcast    chan []byte
+	register     chan *Client
+	unregister   chan *Client
+	chatRooms    map[string]map[*Client]bool
+	userChats    map[string]string // userId -> chatId
+	mutex        sync.RWMutex
+	workerPool   chan chan Message // Worker pool for message processing
+	messageQueue chan MessageWork  // High-speed message queue
+	stats        *HubStats
+}
+
+type MessageWork struct {
+	message Message
+	client  *Client
+}
+
+type HubStats struct {
+	messagesProcessed uint64
+	connectionsTotal  uint64
+	avgProcessTime    time.Duration
+	mutex            sync.RWMutex
+}
+
+type Worker struct {
+	id         int
+	work       chan Message
+	workerPool chan chan Message
+	quit       chan bool
+	hub        *Hub
+}
+
+func (w *Worker) Start() {
+	go func() {
+		for {
+			w.workerPool <- w.work
+			select {
+			case msg := <-w.work:
+				w.processMessage(msg)
+			case <-w.quit:
+				return
+			}
+		}
+	}()
+}
+
+func (w *Worker) processMessage(msg Message) {
+	start := time.Now()
+	
+	// Ultra-fast message processing
+	switch msg.Type {
+	case "message":
+		// Process through C++ native crypto if available
+		processedContent := w.hub.processWithNativeCrypto(msg.Content)
+		msg.Content = processedContent
+		
+		// Broadcast to chat room
+		if msgBytes, err := json.Marshal(msg); err == nil {
+			w.hub.broadcastToChat(msg.ChatId, msgBytes)
+		}
+		
+	case "typing":
+		// Ultra-fast typing indicator
+		if msgBytes, err := json.Marshal(msg); err == nil {
+			w.hub.broadcastToChat(msg.ChatId, msgBytes)
+		}
+	}
+	
+	// Update stats
+	w.hub.stats.mutex.Lock()
+	w.hub.stats.messagesProcessed++
+	w.hub.stats.avgProcessTime = (w.hub.stats.avgProcessTime + time.Since(start)) / 2
+	w.hub.stats.mutex.Unlock()
 }
 
 type Client struct {
@@ -53,11 +119,13 @@ var upgrader = websocket.Upgrader{
 }
 
 const (
-	writeWait      = 2 * time.Second   // Faster write timeout
-	pongWait       = 30 * time.Second  // Reduced for faster detection
-	pingPeriod     = (pongWait * 8) / 10 // More frequent pings
-	maxMessageSize = 1024 * 1024       // 1MB for larger messages
-	bufferSize     = 4096             // Larger buffer for speed
+	writeWait      = 500 * time.Millisecond // Ultra-fast write timeout
+	pongWait       = 15 * time.Second      // Aggressive timeout for bad connections
+	pingPeriod     = (pongWait * 7) / 10   // Very frequent pings
+	maxMessageSize = 2 * 1024 * 1024       // 2MB for larger messages
+	bufferSize     = 8192                  // Larger buffer for speed
+	maxClients     = 10000                 // Maximum concurrent clients
+	workerPoolSize = 100                   // Worker pool for message processing
 )
 
 func newHub() *Hub {
