@@ -23,7 +23,7 @@ externalPort = 8080
 PORT = "5000"
 
 [workflows]
-runButton = "Telegram-Killer Performance Stack"
+runButton = "Full Stack Development"
 
 [[workflows.workflow]]
 name = "Project"
@@ -456,6 +456,40 @@ args = "./run-tests.sh"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "echo \"✅ Load testing complete - check results above\""
+
+[[workflows.workflow]]
+name = "Start Go WebSocket Server"
+author = 45696961
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🌐 Starting Go WebSocket server on port 8080...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go mod tidy"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go run server/websocket.go"
+
+[[workflows.workflow]]
+name = "Full Stack Development"
+author = 45696961
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🚀 Starting Full Stack Development...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go run server/websocket.go &"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
 
 [agent]
 expertMode = true
