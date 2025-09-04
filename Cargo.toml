@@ -14,7 +14,7 @@ path = "server/message_processor.rs"
 
 [dependencies]
 aes-gcm = "0.10"
-rsa = "0.9"
+rsa = { version = "0.9", features = ["sha2"] }
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

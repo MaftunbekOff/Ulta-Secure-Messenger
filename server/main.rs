@@ -18,7 +18,7 @@ async fn main() {
     match args[1].as_str() {
         "encrypt" => {
             if args.len() >= 3 {
-                let engine = RustEncryptionEngine::new();
+                let _engine = RustEncryptionEngine::new();
                 println!("🦀 Rust encryption ready for: {}", &args[2]);
             } else {
                 println!("Usage: encrypt <message>");
@@ -26,7 +26,7 @@ async fn main() {
         },
         "decrypt" => {
             if args.len() >= 3 {
-                let engine = RustEncryptionEngine::new();
+                let _engine = RustEncryptionEngine::new();
                 println!("🦀 Rust decryption ready for: {}", &args[2]);
             } else {
                 println!("Usage: decrypt <encrypted_message>");

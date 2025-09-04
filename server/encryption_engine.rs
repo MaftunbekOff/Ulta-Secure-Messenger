@@ -1,5 +1,4 @@
 
-pub use std::env;
 use aes_gcm::{
     aead::{Aead, AeadCore, KeyInit, OsRng},
     Aes256Gcm, Nonce, Key
@@ -9,6 +8,7 @@ use rand::rngs::OsRng as RandOsRng;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt;
+use base64::{Engine as _, engine::general_purpose};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EncryptedMessage {
@@ -90,9 +90,9 @@ impl RustEncryptionEngine {
         let message_id = self.generate_secure_id();
 
         Ok(EncryptedMessage {
-            encrypted_content: base64::encode(encrypted_content),
-            encrypted_symmetric_key: base64::encode(encrypted_symmetric_key),
-            nonce: base64::encode(nonce),
+            encrypted_content: general_purpose::STANDARD.encode(encrypted_content),
+            encrypted_symmetric_key: general_purpose::STANDARD.encode(encrypted_symmetric_key),
+            nonce: general_purpose::STANDARD.encode(nonce),
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
@@ -109,11 +109,11 @@ impl RustEncryptionEngine {
         rsa_private_key: &RsaPrivateKey,
     ) -> Result<String, EncryptionError> {
         // Decode base64 data
-        let encrypted_content = base64::decode(&encrypted_msg.encrypted_content)
+        let encrypted_content = general_purpose::STANDARD.decode(&encrypted_msg.encrypted_content)
             .map_err(EncryptionError::Base64Error)?;
-        let encrypted_symmetric_key = base64::decode(&encrypted_msg.encrypted_symmetric_key)
+        let encrypted_symmetric_key = general_purpose::STANDARD.decode(&encrypted_msg.encrypted_symmetric_key)
             .map_err(EncryptionError::Base64Error)?;
-        let nonce_bytes = base64::decode(&encrypted_msg.nonce)
+        let nonce_bytes = general_purpose::STANDARD.decode(&encrypted_msg.nonce)
             .map_err(EncryptionError::Base64Error)?;
 
         // Decrypt AES key with RSA
@@ -176,10 +176,10 @@ impl RustEncryptionEngine {
 // C-compatible interface for Node.js integration
 #[no_mangle]
 pub extern "C" fn rust_encrypt_message(
-    message: *const std::os::raw::c_char,
-    public_key_pem: *const std::os::raw::c_char,
-    output: *mut std::os::raw::c_char,
-    output_len: usize,
+    _message: *const std::os::raw::c_char,
+    _public_key_pem: *const std::os::raw::c_char,
+    _output: *mut std::os::raw::c_char,
+    _output_len: usize,
 ) -> i32 {
     // Implementation for Node.js FFI integration
     // This allows calling Rust from Node.js directly

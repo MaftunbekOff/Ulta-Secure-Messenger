@@ -9,15 +9,15 @@ pub struct MessageStats {
 }
 
 pub struct RustMessageProcessor {
-    max_queue_size: usize,
-    batch_size: usize,
+    _max_queue_size: usize,
+    _batch_size: usize,
 }
 
 impl RustMessageProcessor {
     pub fn new(max_queue_size: usize, batch_size: usize) -> Self {
         Self {
-            max_queue_size,
-            batch_size,
+            _max_queue_size: max_queue_size,
+            _batch_size: batch_size,
         }
     }
 
