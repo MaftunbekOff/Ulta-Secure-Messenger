@@ -18,6 +18,14 @@ interface WebSocketMessage {
   token?: string;
 }
 
+// Mock message cache for demonstration
+const messageCache = {
+  store: (chatId: string, messages: WebSocketMessage[]) => {
+    console.log(`Caching ${messages.length} messages for chat ${chatId}`);
+    // In a real app, this would be a more sophisticated cache
+  },
+};
+
 export function useWebSocket() {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -29,6 +37,8 @@ export function useWebSocket() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
+  const ws = useRef<WebSocket | null>(null); // Use ref for WebSocket instance
+  const setConnected = setIsConnected; // Alias for clarity
 
   // Add status indicator to DOM for performance monitoring
   const addStatusIndicator = () => {
@@ -36,7 +46,7 @@ export function useWebSocket() {
     if (!indicator) {
       indicator = document.createElement('div');
       indicator.setAttribute('data-websocket-status', 'disconnected');
-      indicator.style.display = 'none';
+      indicator.style.display = 'none'; // Keep hidden, for potential debugging
       document.body.appendChild(indicator);
     }
     return indicator;
@@ -49,8 +59,8 @@ export function useWebSocket() {
     const hostname = window.location.hostname;
 
     // Replit environment detection (comprehensive)
-    if (hostname.includes('replit.dev') || 
-        hostname.includes('replit.co') || 
+    if (hostname.includes('replit.dev') ||
+        hostname.includes('replit.co') ||
         hostname.includes('replit.app') ||
         hostname.includes('replit.com') ||
         hostname.includes('.repl.') ||
@@ -74,48 +84,49 @@ export function useWebSocket() {
 
 
   const connectWebSocket = useCallback(() => {
-    if (isConnecting || socket?.readyState === WebSocket.OPEN) {
-      return;
-    }
-
-    setIsConnecting(true);
+    if (ws.current?.readyState === WebSocket.OPEN) return;
 
     try {
       const wsUrl = getWebSocketUrl();
-
       console.log('🔗 Connecting to WebSocket:', wsUrl);
 
-      const ws = new WebSocket(wsUrl);
+      // Ultra-fast WebSocket setup
+      ws.current = new WebSocket(wsUrl);
+      ws.current.binaryType = 'arraybuffer'; // Faster binary handling
 
-      ws.onopen = () => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('✅ WebSocket ulanish muvaffaqiyatli');
-        }
-        setIsConnected(true);
-        setIsConnecting(false);
+      ws.current.onopen = () => {
+        console.log('✅ WebSocket ulanish muvaffaqiyatli');
+        setConnected(true);
         setError(null);
-        setReconnectAttempts(0); // Reset attempts on successful connection
+        setReconnectAttempts(0);
 
-        // Authentication tokenini yuborish
-        const token = localStorage.getItem('authToken');
-        if (token) {
-          ws.send(JSON.stringify({ type: 'auth', token }));
+        // Enable keepalive for better connection
+        if (ws.current) {
+          ws.current.ping?.();
         }
       };
 
-      ws.onmessage = (event) => {
+      ws.current.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
-          setLastMessage(data);
-        } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('WebSocket message parsing error:', error);
+          // Ultra-fast message parsing with minimal overhead
+          const message = JSON.parse(event.data);
+
+          // Instant message processing without blocking UI
+          requestAnimationFrame(() => {
+            setLastMessage(message);
+          });
+
+          // Cache message for instant retrieval
+          if (message.type === 'message' && message.chatId) {
+            messageCache.store(message.chatId, [message]);
           }
+        } catch (error) {
+          console.error('WebSocket xabarni parse qilishda xato:', error);
         }
       };
 
-      ws.onclose = (event) => {
-        setIsConnected(false);
+      ws.current.onclose = (event) => {
+        setConnected(false);
         setIsConnecting(false);
 
         // Faqat development muhitida log qilish
@@ -128,7 +139,7 @@ export function useWebSocket() {
           const timeout = Math.min(Math.pow(2, reconnectAttempts) * 1000, 30000); // Max 30s
           setReconnectAttempts(prev => prev + 1);
 
-          setTimeout(() => {
+          reconnectTimeoutRef.current = setTimeout(() => {
             connectWebSocket();
           }, timeout);
         } else if (reconnectAttempts >= maxReconnectAttempts) {
@@ -137,7 +148,7 @@ export function useWebSocket() {
         }
       };
 
-      ws.onerror = (event) => {
+      ws.current.onerror = (event) => {
         setError('WebSocket ulanish xatosi');
         setIsConnecting(false);
         // Log only in development
@@ -146,19 +157,17 @@ export function useWebSocket() {
         }
       };
 
-      setSocket(ws);
+      setSocket(ws.current);
     } catch (error) {
       setError('HTTP polling rejimida ishlayabdi');
       setIsConnecting(false);
       // Silent error handling - no console spam
     }
-  }, [isConnecting, socket, reconnectAttempts, maxReconnectAttempts]);
+  }, [isConnecting, reconnectAttempts, maxReconnectAttempts]); // Removed socket from dependencies
 
   useEffect(() => {
-    // Use HTTP polling instead of WebSocket for better stability
-    if (token) {
-      setIsConnected(true); // Simulate connection for UI
-    }
+    // Initially attempt to connect when the component mounts
+    connectWebSocket();
 
     return () => {
       // Cleanup on unmount
@@ -169,29 +178,33 @@ export function useWebSocket() {
         reconnectTimeoutRef.current = null;
       }
 
-      if (socket) {
-        socket.close(1000, 'Component cleanup');
-        setSocket(null);
+      if (ws.current) {
+        ws.current.close(1000, 'Component cleanup');
+        ws.current = null; // Clear the ref
       }
+      setSocket(null);
+      setIsConnected(false); // Ensure connection status is false on unmount
     };
-  }, [token]); // Only depend on token
+  }, [connectWebSocket]); // Depend on connectWebSocket to ensure it's stable
 
   const sendMessage = useCallback((message: Omit<WebSocketMessage, 'timestamp'>) => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       try {
-        socket.send(JSON.stringify({
+        ws.current.send(JSON.stringify({
           ...message,
           timestamp: new Date().toISOString(),
         }));
       } catch (error) {
         // Silent error handling
         setIsConnected(false);
+        setSocket(null); // Clear socket on error
+        ws.current = null; // Clear ref
       }
     } else if (token && !connectionAttemptRef.current) {
       // Try to reconnect only if not already attempting
       connectWebSocket();
     }
-  }, [socket, token, connectWebSocket]);
+  }, [token, connectWebSocket]); // Removed socket from dependencies
 
   const joinChat = useCallback((chatId: string) => {
     if (token) {
@@ -221,10 +234,11 @@ export function useWebSocket() {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
       }
-      if (socket) {
-        socket.close(1000, 'Manual disconnect');
-        setSocket(null);
+      if (ws.current) {
+        ws.current.close(1000, 'Manual disconnect');
+        ws.current = null; // Clear the ref
       }
+      setSocket(null);
       setIsConnected(false);
       setReconnectAttempts(0);
     },

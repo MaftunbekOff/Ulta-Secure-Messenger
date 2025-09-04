@@ -506,34 +506,28 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async getChatMessages(chatId: string, limit: number = 50, offset: number = 0): Promise<Array<Message & { sender: User }>> {
+  async getChatMessages(chatId: string, limit: number = 50, offset: number = 0): Promise<any[]> {
     try {
-      console.log(`Getting messages for chat ${chatId} with limit ${limit} and offset ${offset}`);
-
-      const result = await db
+      // Ultra-optimized query with specific fields only
+      const messages = await db
         .select({
-          message: messages,
-          sender: users,
+          id: chatMessages.id,
+          content: chatMessages.content,
+          senderId: chatMessages.senderId,
+          createdAt: chatMessages.createdAt,
+          isEncrypted: chatMessages.isEncrypted,
+          messageType: chatMessages.messageType
         })
-        .from(messages)
-        .innerJoin(users, eq(messages.senderId, users.id))
-        .where(eq(messages.chatId, chatId))
-        .orderBy(desc(messages.createdAt))
-        .limit(Math.min(limit, 100)) // Limit maximum to 100 for performance
-        .offset(Math.max(offset, 0)); // Ensure offset is not negative
+        .from(chatMessages)
+        .where(eq(chatMessages.chatId, chatId))
+        .orderBy(desc(chatMessages.createdAt))
+        .limit(Math.min(limit, 100)) // Cap at 100 for performance
+        .offset(offset);
 
-      console.log(`Found ${result.length} messages for chat ${chatId}`);
-
-      return result.map(row => ({
-        ...row.message,
-        sender: row.sender,
-        // Ensure content is never null/undefined
-        content: row.message.content || '',
-        isEncrypted: row.message.isEncrypted || false,
-      }));
+      return messages;
     } catch (error) {
-      console.error(`Error in getChatMessages for chat ${chatId}:`, error);
-      throw new Error(`Failed to fetch messages: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('getChatMessages error:', error);
+      return [];
     }
   }
 

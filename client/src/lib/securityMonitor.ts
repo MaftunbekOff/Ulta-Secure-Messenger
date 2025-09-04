@@ -33,7 +33,7 @@ export class SecurityMonitor {
       e.severity === event.severity && 
       now - e.timestamp < 60000
     );
-    
+
     if (recentSimilarEvents.length >= 3) {
       return; // Skip logging to prevent spam
     }
@@ -133,7 +133,7 @@ export class SecurityMonitor {
       const isProduction = typeof window !== 'undefined' && 
                           (window.location.hostname.includes('replit') || 
                            process.env.NODE_ENV === 'production');
-      
+
       // Faqat production muhitida va kam chastotada tekshirish
       if (!isProduction || Math.random() > 0.01) { // 1% chance to run - reduced from 10%
         return issues; 
@@ -402,18 +402,18 @@ if (typeof window !== 'undefined') {
   let errorCount = 0;
   const errorLimit = 5; // Reduced limit
   const resetInterval = 300000; // 5 minutes instead of 1 minute
-  
+
   setInterval(() => { errorCount = 0; }, resetInterval);
-  
+
   // Better global error monitoring with reduced sensitivity
   window.addEventListener('unhandledrejection', (event) => {
     if (errorCount >= errorLimit) {
       event.preventDefault();
       return;
     }
-    
+
     const reason = event.reason?.message || event.reason || '';
-    
+
     // Only log critical errors
     if (reason.includes('CRITICAL') || reason.includes('SECURITY BREACH')) {
       errorCount++;
@@ -433,11 +433,11 @@ if (typeof window !== 'undefined') {
     }
     event.preventDefault();
   });
-  
+
   // Simplified error recovery
   window.addEventListener('error', (event) => {
     if (errorCount >= errorLimit) return;
-    
+
     // Only react to critical errors
     if (event.message?.includes('Network Error') && errorCount < 2) {
       errorCount++;

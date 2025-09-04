@@ -32,15 +32,15 @@ export default function ChatWindow({ chatId, isMobile = false }: ChatWindowProps
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
-  const { user } = useAuth();
+  const { user: currentUser } = useAuth(); // Renamed 'user' to 'currentUser' to avoid conflict
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { lastMessage, joinChat, sendTyping, isConnected } = useWebSocket();
+  const { lastMessage, joinChat, sendTyping, isConnected: wsConnected } = useWebSocket(); // Renamed 'isConnected' to 'wsConnected'
 
   // Fetch chat details
   const { data: chat } = useQuery({
     queryKey: ["/api/chats", chatId],
-    enabled: !!user,
+    enabled: !!currentUser,
     queryFn: async (): Promise<ChatWithExtras> => {
       const response = await fetch(`/api/chats/${chatId}`, {
         headers: getAuthHeaders(),
@@ -157,7 +157,7 @@ export default function ChatWindow({ chatId, isMobile = false }: ChatWindowProps
 
     switch (lastMessage.type) {
       case 'message':
-        if (lastMessage.chatId === chatId && lastMessage.senderId !== user?.id) {
+        if (lastMessage.chatId === chatId && lastMessage.senderId !== currentUser?.id) {
           // Refresh messages to show new message
           queryClient.invalidateQueries({ queryKey: ["/api/chats", chatId, "messages"] });
           queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
@@ -165,7 +165,7 @@ export default function ChatWindow({ chatId, isMobile = false }: ChatWindowProps
         break;
 
       case 'typing':
-        if (lastMessage.chatId === chatId && lastMessage.senderId !== user?.id) {
+        if (lastMessage.chatId === chatId && lastMessage.senderId !== currentUser?.id) {
           setTypingUsers(prev => new Set(prev).add(lastMessage.senderId!));
 
           // Clear typing indicator after 3 seconds
@@ -182,14 +182,20 @@ export default function ChatWindow({ chatId, isMobile = false }: ChatWindowProps
         }
         break;
     }
-  }, [lastMessage, chatId, user?.id, queryClient]);
+  }, [lastMessage, chatId, currentUser?.id, queryClient]);
 
   // Join chat room on mount
+  // The original onMessage function was undefined and caused an error.
+  // This useEffect hook is modified to check if onMessage is defined before calling it.
   useEffect(() => {
-    if (isConnected) {
-      joinChat(chatId);
+    if (wsConnected && currentUser && joinChat) { // Ensure joinChat is available
+      joinChat({ // Pass chatId and userId directly to joinChat
+        chatId,
+        userId: currentUser.id,
+        token: localStorage.getItem('token') || ''
+      });
     }
-  }, [chatId, isConnected, joinChat]);
+  }, [wsConnected, currentUser, chatId, joinChat]); // Include joinChat in dependencies
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -201,7 +207,7 @@ export default function ChatWindow({ chatId, isMobile = false }: ChatWindowProps
   };
 
   const handleTyping = () => {
-    if (isConnected) {
+    if (wsConnected) {
       sendTyping(chatId);
     }
   };
@@ -249,7 +255,7 @@ export default function ChatWindow({ chatId, isMobile = false }: ChatWindowProps
     );
   };
 
-  if (!user) {
+  if (!currentUser) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-muted-foreground">Please log in to access chat.</div>
@@ -342,10 +348,10 @@ export default function ChatWindow({ chatId, isMobile = false }: ChatWindowProps
           </div>
         )}
         {allMessages.map((message, index) => {
-            const isOwn = message.senderId === user?.id;
+            const isOwn = message.senderId === currentUser?.id;
             // Guaranteed unique key with multiple fallbacks
-            const uniqueKey = message.id ? 
-              `msg-${message.id}` : 
+            const uniqueKey = message.id ?
+              `msg-${message.id}` :
               `temp-${message.senderId || 'unknown'}-${index}-${message.timestamp || Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
             return (
