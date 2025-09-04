@@ -30,7 +30,9 @@ export function useWebSocket() {
   const connectWebSocket = useCallback(async () => {
     // Disable WebSocket for better performance - using HTTP polling instead
     return;
-
+    
+    /*
+    try {
       // Longer timeout for Replit environment
       const connectionTimeout = setTimeout(() => {
         if (ws.readyState === WebSocket.CONNECTING) {
@@ -115,6 +117,7 @@ export function useWebSocket() {
         }, 3000);
       }
     }
+    */
   }, [token, reconnectAttempts, socket]);
 
   useEffect(() => {

@@ -262,5 +262,18 @@ args = "go run server/websocket.go"
 task = "shell.exec"
 args = "npm run dev"
 
+[[workflows.workflow]]
+name = "Full Stack with WebSocket"
+author = 45696961
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go run server/websocket.go"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
 [agent]
 expertMode = true
