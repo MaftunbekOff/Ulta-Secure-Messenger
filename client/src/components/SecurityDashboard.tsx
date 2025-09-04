@@ -16,27 +16,49 @@ export function SecurityDashboard() {
 
   // Security monitoring with encryption status
   useEffect(() => {
-    const monitor = securityMonitor; // Assuming securityMonitor instance is directly available or obtained differently
-    monitor.startMonitoring();
+    const monitor = securityMonitor;
+    
+    // Start monitoring without throwing errors
+    monitor.startMonitoring().catch(error => {
+      console.warn('Security monitoring failed to start:', error);
+    });
 
-    const checkSecurityIssues = () => {
-      const issues = monitor.getSecurityEvents();
-      const recentIssues = issues.filter(
-        issue => Date.now() - issue.timestamp < 60000
-      );
-
-      // Check encryption status
-      const encryptionStatus = encryptionManager.getEncryptionStatus();
-      if (!encryptionStatus.isSecure) {
-        console.warn('Encryption not properly configured');
-        // Optionally update state to show a warning in the UI
-      }
-
-      if (recentIssues.length > 0) {
-        console.warn('Security issues detected:', recentIssues);
+    const updateSecurityReport = () => {
+      try {
+        const report = monitor.generateSecurityReport();
+        setSecurityReport(report);
+      } catch (error) {
+        console.warn('Failed to generate security report:', error);
       }
     };
 
+    const checkSecurityIssues = () => {
+      try {
+        const issues = monitor.getSecurityEvents();
+        const recentIssues = issues.filter(
+          issue => Date.now() - issue.timestamp < 60000
+        );
+
+        // Check encryption status
+        const encryptionStatus = encryptionManager.getEncryptionStatus();
+        if (!encryptionStatus.isSecure) {
+          console.warn('Encryption not properly configured');
+        }
+
+        if (recentIssues.length > 0) {
+          console.warn('Security issues detected:', recentIssues);
+        }
+
+        // Update security report
+        updateSecurityReport();
+      } catch (error) {
+        console.warn('Security check failed:', error);
+      }
+    };
+
+    // Initial check
+    updateSecurityReport();
+    
     const interval = setInterval(checkSecurityIssues, 10000);
 
     return () => {

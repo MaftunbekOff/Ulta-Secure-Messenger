@@ -329,6 +329,21 @@ export class SecurityMonitor {
     }
   }
 
+  // Security eventlarni olish
+  getSecurityEvents(): SecurityEvent[] {
+    return this.events;
+  }
+
+  // Monitoring holatini tekshirish
+  isMonitoringActive(): boolean {
+    return this.isMonitoring;
+  }
+
+  // Monitoringni to'xtatish
+  stopMonitoring(): void {
+    this.isMonitoring = false;
+  }
+
   // Tozalash
   cleanup(): void {
     this.isMonitoring = false; // Monitoringni to'xtatish
