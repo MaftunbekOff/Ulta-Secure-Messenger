@@ -366,14 +366,36 @@ function decryptBasicV1(data: any): string {
 }
 
 function decryptLegacyAES(data: any): string {
-  const algorithm = 'aes-256-cbc';
-  const key = crypto.scryptSync('ultrasecure-messenger-key', 'salt', 32);
-  const iv = Buffer.from(data.iv, 'hex');
+  try {
+    const algorithm = 'aes-256-cbc';
+    const key = crypto.scryptSync('ultrasecure-messenger-key', 'salt', 32);
+    
+    // Validate IV
+    if (!data.iv || typeof data.iv !== 'string') {
+      throw new Error('Invalid or missing IV');
+    }
+    
+    // Validate encrypted data
+    if (!data.encrypted || typeof data.encrypted !== 'string') {
+      throw new Error('Invalid or missing encrypted data');
+    }
 
-  const decipher = crypto.createDecipheriv(algorithm, key, iv);
-  let decrypted = decipher.update(data.encrypted, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
+    const iv = Buffer.from(data.iv, 'hex');
+    if (iv.length !== 16) {
+      throw new Error('IV must be 16 bytes for AES');
+    }
+
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    decipher.setAutoPadding(true);
+
+    let decrypted = decipher.update(data.encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    
+    return decrypted;
+  } catch (error) {
+    console.warn('Legacy AES decryption failed:', error.message);
+    throw new Error(`Legacy AES decryption failed: ${error.message}`);
+  }
 }
 
 function tryLegacyDecryption(encryptedData: string): string {
@@ -382,17 +404,63 @@ function tryLegacyDecryption(encryptedData: string): string {
     const algorithm = 'aes-256-cbc';
     const key = crypto.scryptSync('ultrasecure-messenger-key', 'salt', 32);
     
-    // Assume it's base64 encoded
-    const encrypted = Buffer.from(encryptedData, 'base64');
-    const iv = encrypted.slice(0, 16);
-    const content = encrypted.slice(16);
+    // Try different approaches for legacy data
+    let encrypted: Buffer;
+    let iv: Buffer;
+    let content: Buffer;
+
+    // First attempt: assume base64 with IV prefix
+    try {
+      encrypted = Buffer.from(encryptedData, 'base64');
+      if (encrypted.length < 16) {
+        throw new Error('Encrypted data too short for IV');
+      }
+      iv = encrypted.slice(0, 16);
+      content = encrypted.slice(16);
+    } catch (base64Error) {
+      // Second attempt: try hex encoding
+      try {
+        encrypted = Buffer.from(encryptedData, 'hex');
+        if (encrypted.length < 16) {
+          throw new Error('Encrypted data too short for IV');
+        }
+        iv = encrypted.slice(0, 16);
+        content = encrypted.slice(16);
+      } catch (hexError) {
+        // Third attempt: generate default IV and treat whole string as content
+        iv = Buffer.alloc(16, 0); // Default IV
+        try {
+          content = Buffer.from(encryptedData, 'base64');
+        } catch {
+          content = Buffer.from(encryptedData, 'utf8');
+        }
+      }
+    }
+
+    // Ensure content length is multiple of 16 (AES block size)
+    const blockSize = 16;
+    const remainder = content.length % blockSize;
+    if (remainder !== 0) {
+      // Pad content to block size
+      const padding = blockSize - remainder;
+      const paddedContent = Buffer.alloc(content.length + padding);
+      content.copy(paddedContent);
+      // Add PKCS7 padding
+      for (let i = content.length; i < paddedContent.length; i++) {
+        paddedContent[i] = padding;
+      }
+      content = paddedContent;
+    }
     
     const decipher = crypto.createDecipheriv(algorithm, key, iv);
-    let decrypted = decipher.update(content, undefined, 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
+    decipher.setAutoPadding(true); // Enable auto padding
+    
+    let decrypted = decipher.update(content);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    
+    return decrypted.toString('utf8').replace(/\0+$/, ''); // Remove null padding
   } catch (error) {
-    console.warn('Legacy decryption failed:', error);
+    console.warn('Legacy decryption failed:', error.message);
     throw error;
   }
 }
@@ -431,30 +499,72 @@ function autoDetectAndDecrypt(data: any, privateKey?: string): string {
 
 function tryAllDecryptionMethods(encryptedData: string, privateKey?: string): string {
   const methods = [
-    () => tryLegacyDecryption(encryptedData),
-    () => {
-      // Try as base64 obfuscated
-      const reversed = encryptedData.split('').reverse().join('');
-      return Buffer.from(reversed, 'base64').toString('utf8');
+    {
+      name: 'Legacy AES-256-CBC',
+      method: () => tryLegacyDecryption(encryptedData)
     },
-    () => {
-      // Try direct base64 decode
-      return Buffer.from(encryptedData, 'base64').toString('utf8');
+    {
+      name: 'Base64 obfuscated reverse',
+      method: () => {
+        const reversed = encryptedData.split('').reverse().join('');
+        const decoded = Buffer.from(reversed, 'base64').toString('utf8');
+        if (decoded.length === 0 || decoded === encryptedData) {
+          throw new Error('Invalid obfuscated data');
+        }
+        return decoded;
+      }
+    },
+    {
+      name: 'Direct Base64 decode',
+      method: () => {
+        const decoded = Buffer.from(encryptedData, 'base64').toString('utf8');
+        if (decoded.length === 0 || decoded === encryptedData) {
+          throw new Error('Invalid base64 data');
+        }
+        return decoded;
+      }
+    },
+    {
+      name: 'Hex decode',
+      method: () => {
+        if (!/^[0-9a-fA-F]+$/.test(encryptedData)) {
+          throw new Error('Not hex data');
+        }
+        const decoded = Buffer.from(encryptedData, 'hex').toString('utf8');
+        if (decoded.length === 0) {
+          throw new Error('Invalid hex data');
+        }
+        return decoded;
+      }
+    },
+    {
+      name: 'UTF8 passthrough',
+      method: () => {
+        // If it's already readable UTF8, just return it
+        if (/^[\x20-\x7E\s]*$/.test(encryptedData)) {
+          return encryptedData;
+        }
+        throw new Error('Not readable UTF8');
+      }
     }
   ];
 
-  for (const method of methods) {
+  let lastError: Error | null = null;
+
+  for (const { name, method } of methods) {
     try {
       const result = method();
-      if (result && result !== encryptedData) {
-        console.warn('⚠️ Decryption: Using fallback method');
+      if (result && result !== encryptedData && result.trim().length > 0) {
+        console.warn(`⚠️ Decryption: Using fallback method (${name})`);
         return result;
       }
     } catch (error) {
+      lastError = error;
       // Continue to next method
     }
   }
 
-  console.warn('⚠️ All decryption methods failed, returning original');
+  console.warn('⚠️ All decryption methods failed:', lastError?.message || 'Unknown error');
+  // Return original data instead of throwing
   return encryptedData;
 }
