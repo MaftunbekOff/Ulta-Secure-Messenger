@@ -328,30 +328,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Chat routes with optimization
   app.get('/api/chats', authenticate, async (req: AuthenticatedRequest, res) => {
+    let requestHandled = false;
+    
     // Set timeout for slow connections
     const timeout = setTimeout(() => {
-      if (!res.headersSent) {
+      if (!requestHandled && !res.headersSent) {
+        requestHandled = true;
         res.status(408).json({ message: "Request timeout" });
       }
     }, 3000); // 3 second timeout
 
     try {
-      // Optimize response headers
-      res.set({
-        'Cache-Control': 'private, max-age=30', // 30 second cache
-        'X-Response-Time': Date.now().toString(),
-        'Content-Type': 'application/json'
-      });
-
       const chats = await storage.getUserChats(req.userId!);
+      
       clearTimeout(timeout);
       
-      // Fast JSON response
-      res.json(chats);
+      if (!requestHandled && !res.headersSent) {
+        requestHandled = true;
+        
+        // Optimize response headers
+        res.set({
+          'Cache-Control': 'private, max-age=30', // 30 second cache
+          'X-Response-Time': Date.now().toString(),
+          'Content-Type': 'application/json'
+        });
+        
+        // Fast JSON response
+        res.json(chats);
+      }
     } catch (error) {
       clearTimeout(timeout);
       console.error('Chats fetch error:', error);
-      res.status(500).json({ message: "Failed to fetch chats" });
+      
+      if (!requestHandled && !res.headersSent) {
+        requestHandled = true;
+        res.status(500).json({ message: "Failed to fetch chats" });
+      }
     }
   });
 
