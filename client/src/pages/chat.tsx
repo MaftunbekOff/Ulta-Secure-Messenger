@@ -1,12 +1,38 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Sidebar from "@/components/chat/sidebar";
 import ChatWindow from "@/components/chat/chat-window";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { encryptMessage, isMilitaryEncryptionAvailable } from "../lib/militaryEncryption";
 import { quantumSafe } from "../lib/quantumSafe";
 import { selfDestructMessages, DESTRUCT_CONFIGS } from "../lib/selfDestructMessages";
 import { securityMonitor } from "../lib/securityMonitor";
+
+// Placeholder for actual active chat data structure and getChatDisplayData function
+// In a real app, this would come from your state management or context
+const activeChat = {
+  id: "chat1",
+  name: "John Doe",
+  isGroup: false,
+  members: [],
+  avatar: "https://github.com/shadcn.png",
+  status: "Online",
+};
+
+const getChatDisplayData = (chat) => {
+  if (chat.isGroup) {
+    return { name: chat.name || "Group Chat", initials: "G", avatar: undefined };
+  } else {
+    const name = chat.name || "User";
+    const initials = name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .substring(0, 2);
+    return { name, initials, avatar: chat.avatar, status: chat.status };
+  }
+};
 
 export default function Chat() {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
@@ -14,6 +40,56 @@ export default function Chat() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null); // Ref for chat container
+  const [autoScroll, setAutoScroll] = useState(true); // State for auto-scroll
+
+  // Connection status monitoring
+  const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline' | 'slow'>('online');
+  const [offlineMessages, setOfflineMessages] = useState<any[]>([]);
+
+  // Monitor connection quality
+  useEffect(() => {
+    let slowConnectionTimer: NodeJS.Timeout;
+
+    const checkConnection = () => {
+      if (!navigator.onLine) {
+        setConnectionStatus('offline');
+        return;
+      }
+
+      const start = Date.now();
+      fetch('/api/health', { 
+        method: 'HEAD',
+        cache: 'no-store'
+      })
+      .then(() => {
+        const responseTime = Date.now() - start;
+        if (responseTime > 3000) {
+          setConnectionStatus('slow');
+        } else {
+          setConnectionStatus('online');
+        }
+      })
+      .catch(() => {
+        setConnectionStatus('offline');
+      });
+    };
+
+    // Check connection every 30 seconds
+    const connectionInterval = setInterval(checkConnection, 30000);
+    checkConnection(); // Initial check
+
+    // Listen for online/offline events
+    window.addEventListener('online', () => setConnectionStatus('online'));
+    window.addEventListener('offline', () => setConnectionStatus('offline'));
+
+    return () => {
+      clearInterval(connectionInterval);
+      if (slowConnectionTimer) clearTimeout(slowConnectionTimer);
+      window.removeEventListener('online', () => setConnectionStatus('online'));
+      window.removeEventListener('offline', () => setConnectionStatus('offline'));
+    };
+  }, []);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -105,6 +181,21 @@ export default function Chat() {
     // In a real app, you would send `messageToSend` via WebSocket or another transport
     // await sendMessageViaNetwork(messageToSend, recipientPublicKey, isEncrypted);
   };
+
+  // Auto-scroll optimization
+  const scrollToBottom = useCallback(() => {
+    if (chatContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+
+      if (isNearBottom || autoScroll) {
+        chatContainerRef.current.scrollTo({
+          top: scrollHeight,
+          behavior: connectionStatus === 'slow' ? 'auto' : 'smooth' // Faster scroll for slow connections
+        });
+      }
+    }
+  }, [autoScroll, connectionStatus]);
 
   return (
     <div className="flex h-screen bg-background relative">

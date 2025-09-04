@@ -202,6 +202,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Health check endpoint for connection monitoring
+  app.head('/api/health', (req, res) => {
+    res.status(200).end();
+  });
+
+  app.get('/api/health', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      timestamp: Date.now(),
+      uptime: process.uptime()
+    });
+  });
+
   app.get('/api/auth/me', authenticate, async (req: AuthenticatedRequest, res) => {
     try {
       const user = await storage.getUser(req.userId!);
@@ -337,11 +350,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(cached.data);
       }
 
-      // Set caching headers for better performance
+      // Optimize caching headers for slow connections
+      const cacheMaxAge = req.headers['connection-type'] === 'slow' ? 120 : 30;
       res.set({
-        'Cache-Control': 'private, max-age=30', // Increased to 30 seconds
+        'Cache-Control': `private, max-age=${cacheMaxAge}`,
         'ETag': `"${chatId}-${limit}-${offset}"`,
-        'X-Cache': 'MISS'
+        'X-Cache': 'MISS',
+        'Vary': 'Connection-Type' // Vary cache based on connection quality
       });
 
       const messages = await storage.getChatMessages(

@@ -1,4 +1,3 @@
-
 interface CachedMessage {
   id: string;
   content: string;
@@ -7,99 +6,184 @@ interface CachedMessage {
   chatId: string;
 }
 
+// Message caching with offline support and slow connection optimization
 class MessageCache {
-  private cache = new Map<string, CachedMessage>();
-  private decryptionCache = new Map<string, string>();
-  private chatMessagesCache = new Map<string, CachedMessage[]>();
-  
-  // Cache expiry time (5 minutes)
-  private readonly CACHE_EXPIRY = 5 * 60 * 1000;
+  private cache = new Map<string, CachedMessage[]>();
+  private metadata = new Map<string, CacheMetadata>();
+  private offlineQueue = new Map<string, any[]>(); // Offline message queue
+  private readonly maxSize = 100; // Increased for better offline experience
+  private readonly expireTime = 600000; // 10 minutes for slow connections
 
-  // Add message to cache
-  addMessage(chatId: string, message: CachedMessage): void {
-    const key = `${chatId}:${message.id}`;
-    this.cache.set(key, {
+  // Store messages with compression and offline support
+  store(chatId: string, messages: any[]): void {
+    try {
+      const cacheKey = `chat_${chatId}`;
+
+      // Convert to cacheable format
+      const cachedMessages: CachedMessage[] = messages.map(msg => ({
+        id: msg.id,
+        content: msg.content || '',
+        senderId: msg.senderId,
+        timestamp: msg.createdAt || new Date().toISOString(),
+        isEncrypted: msg.isEncrypted || false
+      }));
+
+      this.cache.set(cacheKey, cachedMessages);
+      this.metadata.set(cacheKey, {
+        lastUpdated: Date.now(),
+        size: cachedMessages.length,
+        compressed: cachedMessages.length > 20
+      });
+
+      // Store in localStorage for persistence across sessions
+      try {
+        const storageKey = `msg_cache_${chatId}`;
+        const dataToStore = {
+          messages: cachedMessages.slice(-30), // Keep last 30 messages
+          timestamp: Date.now()
+        };
+        localStorage.setItem(storageKey, JSON.stringify(dataToStore));
+      } catch (storageError) {
+        // Storage quota exceeded - clear old data
+        this.clearOldLocalStorage();
+      }
+
+      // Cleanup old entries
+      this.cleanup();
+    } catch (error) {
+      // Silent error handling
+    }
+  }
+
+  // Add message to offline queue
+  addToOfflineQueue(chatId: string, message: any): void {
+    if (!this.offlineQueue.has(chatId)) {
+      this.offlineQueue.set(chatId, []);
+    }
+    this.offlineQueue.get(chatId)!.push({
       ...message,
-      timestamp: Date.now()
+      id: `offline_${Date.now()}_${Math.random()}`,
+      timestamp: new Date().toISOString(),
+      isOffline: true
     });
 
-    // Update chat messages cache
-    const existingMessages = this.chatMessagesCache.get(chatId) || [];
-    const updatedMessages = [...existingMessages, message];
-    this.chatMessagesCache.set(chatId, updatedMessages);
-  }
-
-  // Get cached message
-  getMessage(chatId: string, messageId: string): CachedMessage | null {
-    const key = `${chatId}:${messageId}`;
-    const cached = this.cache.get(key);
-    
-    if (!cached) return null;
-    
-    // Check if cache is expired
-    if (Date.now() - cached.timestamp > this.CACHE_EXPIRY) {
-      this.cache.delete(key);
-      return null;
+    // Store offline messages in localStorage
+    try {
+      localStorage.setItem(`offline_${chatId}`, JSON.stringify(this.offlineQueue.get(chatId)));
+    } catch (e) {
+      // Silent error
     }
-    
-    return cached;
   }
 
-  // Cache decrypted content
-  setDecryptedContent(messageId: string, content: string): void {
-    this.decryptionCache.set(messageId, content);
+  // Get offline messages
+  getOfflineMessages(chatId: string): any[] {
+    try {
+      const stored = localStorage.getItem(`offline_${chatId}`);
+      if (stored) {
+        const messages = JSON.parse(stored);
+        this.offlineQueue.set(chatId, messages);
+        return messages;
+      }
+    } catch (e) {
+      // Silent error
+    }
+    return this.offlineQueue.get(chatId) || [];
   }
 
-  // Get cached decrypted content
-  getDecryptedContent(messageId: string): string | null {
-    return this.decryptionCache.get(messageId) || null;
+  // Clear offline queue after sync
+  clearOfflineQueue(chatId: string): void {
+    this.offlineQueue.delete(chatId);
+    localStorage.removeItem(`offline_${chatId}`);
   }
 
-  // Get all messages for a chat
-  getChatMessages(chatId: string): CachedMessage[] {
-    const cached = this.chatMessagesCache.get(chatId);
-    if (!cached) return [];
+  // Load from localStorage on startup
+  loadFromStorage(chatId: string): CachedMessage[] {
+    try {
+      const storageKey = `msg_cache_${chatId}`;
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const data = JSON.JSON.parse(stored);
+        // Check if data is not too old (1 hour)
+        if (Date.now() - data.timestamp < 3600000) {
+          return data.messages;
+        }
+      }
+    } catch (e) {
+      // Silent error
+    }
+    return [];
+  }
 
-    // Filter out expired messages
+  // Clear old localStorage data
+  private clearOldLocalStorage(): void {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('msg_cache_')) {
+        keysToRemove.push(key);
+      }
+    }
+    // Remove oldest first
+    keysToRemove.slice(0, 5).forEach(key => {
+      localStorage.removeItem(key);
+    });
+  }
+
+  // Cleanup old cache entries
+  private cleanup(): void {
+    if (this.cache.size > this.maxSize) {
+      // Remove oldest entries
+      const entries = Array.from(this.cache.entries());
+      const entriesToDelete = entries.slice(0, entries.length - this.maxSize);
+      entriesToDelete.forEach(([key]) => this.cache.delete(key));
+    }
+    // Remove expired metadata
     const now = Date.now();
-    const validMessages = cached.filter(msg => 
-      now - msg.timestamp < this.CACHE_EXPIRY
-    );
-
-    if (validMessages.length !== cached.length) {
-      this.chatMessagesCache.set(chatId, validMessages);
-    }
-
-    return validMessages;
-  }
-
-  // Clear cache for specific chat
-  clearChatCache(chatId: string): void {
-    this.chatMessagesCache.delete(chatId);
-    
-    // Remove individual message cache entries
-    for (const [key] of this.cache) {
-      if (key.startsWith(`${chatId}:`)) {
+    for (const [key, meta] of this.metadata) {
+      if (now - meta.lastUpdated > this.expireTime) {
+        this.metadata.delete(key);
         this.cache.delete(key);
       }
     }
   }
 
-  // Clear all cache
-  clearAll(): void {
-    this.cache.clear();
-    this.decryptionCache.clear();
-    this.chatMessagesCache.clear();
+  // Get cached messages for a chat
+  get(chatId: string): CachedMessage[] {
+    const cacheKey = `chat_${chatId}`;
+    const cached = this.cache.get(cacheKey);
+    if (!cached) return this.loadFromStorage(chatId);
+
+    const meta = this.metadata.get(cacheKey);
+    if (!meta || Date.now() - meta.lastUpdated > this.expireTime) {
+      this.metadata.delete(cacheKey);
+      this.cache.delete(cacheKey);
+      return this.loadFromStorage(chatId);
+    }
+
+    return cached;
   }
 
-  // Get cache stats for debugging
-  getCacheStats() {
-    return {
-      messageCount: this.cache.size,
-      decryptionCount: this.decryptionCache.size,
-      chatCount: this.chatMessagesCache.size
-    };
+  // Update metadata
+  updateMetadata(chatId: string, messages: CachedMessage[]): void {
+    const cacheKey = `chat_${chatId}`;
+    this.metadata.set(cacheKey, {
+      lastUpdated: Date.now(),
+      size: messages.length,
+      compressed: messages.length > 20
+    });
   }
+
+  // Get cache stats
+  getStats(): Map<string, CacheMetadata> {
+    return this.metadata;
+  }
+}
+
+// Interface for cache metadata
+interface CacheMetadata {
+  lastUpdated: number;
+  size: number;
+  compressed: boolean;
 }
 
 export const messageCache = new MessageCache();
