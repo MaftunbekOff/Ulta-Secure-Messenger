@@ -69,7 +69,7 @@ app.use((req, res, next) => {
   const port = parseInt(process.env.PORT || '5000', 10);
   const host = process.env.HOST || "0.0.0.0";
   server.listen(port, host, () => {
-    log(`🚀 Server ishlamoqda: http://localhost:${PORT}`);
+    log(`🚀 Server ishlamoqda: http://localhost:${port}`);
 
   // Initialize Rust components
   console.log('🦀 Rust komponentlarini ishga tushirish...');

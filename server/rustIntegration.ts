@@ -122,3 +122,135 @@ export class RustIntegration {
 
 // Export singleton instance
 export const rustIntegration = RustIntegration.getInstance();
+import { spawn } from 'child_process';
+import { promisify } from 'util';
+import fs from 'fs';
+import path from 'path';
+
+class RustIntegration {
+  private rustBinaryPath: string;
+
+  constructor() {
+    this.rustBinaryPath = path.join(process.cwd(), 'target', 'release');
+  }
+
+  async healthCheck(): Promise<boolean> {
+    try {
+      // Check if Rust binaries exist
+      const encryptionEnginePath = path.join(this.rustBinaryPath, 'encryption_engine');
+      const messageProcessorPath = path.join(this.rustBinaryPath, 'message_processor');
+
+      const encryptionExists = fs.existsSync(encryptionEnginePath) || fs.existsSync(encryptionEnginePath + '.exe');
+      const processorExists = fs.existsSync(messageProcessorPath) || fs.existsSync(messageProcessorPath + '.exe');
+
+      return encryptionExists || processorExists;
+    } catch (error) {
+      console.warn('Rust health check failed:', error);
+      return false;
+    }
+  }
+
+  async benchmarkPerformance(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const child = spawn('cargo', ['run', '--bin', 'encryption_engine', '--', 'benchmark'], {
+        cwd: process.cwd(),
+        stdio: 'pipe'
+      });
+
+      let output = '';
+      
+      child.stdout?.on('data', (data) => {
+        output += data.toString();
+      });
+
+      child.stderr?.on('data', (data) => {
+        console.warn('Rust benchmark stderr:', data.toString());
+      });
+
+      child.on('close', (code) => {
+        if (code === 0) {
+          console.log('🦀 Rust benchmark completed:', output);
+          resolve();
+        } else {
+          console.warn('🦀 Rust benchmark failed with code:', code);
+          resolve(); // Don't reject, just warn
+        }
+      });
+
+      child.on('error', (error) => {
+        console.warn('🦀 Rust benchmark error:', error.message);
+        resolve(); // Don't reject, just warn
+      });
+    });
+  }
+
+  async getMetrics(): Promise<any> {
+    try {
+      // Mock metrics for now
+      return {
+        encryptionSpeed: '~1000 ops/sec',
+        memoryUsage: '~10MB',
+        status: 'healthy'
+      };
+    } catch (error) {
+      console.warn('Failed to get Rust metrics:', error);
+      return null;
+    }
+  }
+
+  async encryptWithRust(data: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const child = spawn('cargo', ['run', '--bin', 'encryption_engine', '--', 'encrypt', data], {
+        cwd: process.cwd(),
+        stdio: 'pipe'
+      });
+
+      let output = '';
+      
+      child.stdout?.on('data', (data) => {
+        output += data.toString();
+      });
+
+      child.on('close', (code) => {
+        if (code === 0) {
+          resolve(output.trim());
+        } else {
+          reject(new Error(`Rust encryption failed with code: ${code}`));
+        }
+      });
+
+      child.on('error', (error) => {
+        reject(error);
+      });
+    });
+  }
+
+  async decryptWithRust(encryptedData: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const child = spawn('cargo', ['run', '--bin', 'encryption_engine', '--', 'decrypt', encryptedData], {
+        cwd: process.cwd(),
+        stdio: 'pipe'
+      });
+
+      let output = '';
+      
+      child.stdout?.on('data', (data) => {
+        output += data.toString();
+      });
+
+      child.on('close', (code) => {
+        if (code === 0) {
+          resolve(output.trim());
+        } else {
+          reject(new Error(`Rust decryption failed with code: ${code}`));
+        }
+      });
+
+      child.on('error', (error) => {
+        reject(error);
+      });
+    });
+  }
+}
+
+export const rustIntegration = new RustIntegration();

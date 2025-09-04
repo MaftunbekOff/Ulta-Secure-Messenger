@@ -603,9 +603,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('Message for Go WebSocket:', message);
   }
 
+  const httpServer = createServer(app);
+  
   // WebSocket server setup
-  const wss = new WebSocket.Server({
-    server,
+  const wss = new WebSocketServer({
+    server: httpServer,
     path: '/ws',
     perMessageDeflate: false
   });
@@ -682,6 +684,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
-  const httpServer = createServer(app);
   return httpServer;
 }
