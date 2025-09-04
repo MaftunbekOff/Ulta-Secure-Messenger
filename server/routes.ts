@@ -331,7 +331,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // In-memory cache for messages
   const messageCache = new Map<string, { data: any[], timestamp: number }>();
-  const CACHE_DURATION = 30000; // 30 seconds
+  const CACHE_DURATION = 60000; // 60 seconds for better performance
+  const CONNECTION_TIMEOUT = 5000; // 5 seconds connection timeout
 
   app.get('/api/chats/:chatId/messages', authenticate, async (req: AuthenticatedRequest, res) => {
     try {
@@ -351,12 +352,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Optimize caching headers for slow connections
-      const cacheMaxAge = req.headers['connection-type'] === 'slow' ? 120 : 30;
+      const cacheMaxAge = req.headers['connection-type'] === 'slow' ? 300 : 60; // Longer cache for slow connections
       res.set({
         'Cache-Control': `private, max-age=${cacheMaxAge}`,
         'ETag': `"${chatId}-${limit}-${offset}"`,
         'X-Cache': 'MISS',
-        'Vary': 'Connection-Type' // Vary cache based on connection quality
+        'Vary': 'Connection-Type',
+        'X-Content-Type-Options': 'nosniff', // Security header
+        'Content-Encoding': 'gzip' // Enable compression
       });
 
       const messages = await storage.getChatMessages(

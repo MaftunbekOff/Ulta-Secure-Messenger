@@ -102,7 +102,7 @@ class MessageCache {
       const storageKey = `msg_cache_${chatId}`;
       const stored = localStorage.getItem(storageKey);
       if (stored) {
-        const data = JSON.JSON.parse(stored);
+        const data = JSON.parse(stored);
         // Check if data is not too old (1 hour)
         if (Date.now() - data.timestamp < 3600000) {
           return data.messages;
