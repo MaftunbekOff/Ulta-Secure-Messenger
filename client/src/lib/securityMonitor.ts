@@ -166,28 +166,33 @@ export class SecurityMonitor {
 
   // Xotira xavfsizligini tekshirish
   async checkMemorySecurity(): Promise<void> {
-    // LocalStorage'dagi sensitiv ma'lumotlarni tekshirish
-    const sensitiveKeys = ['privateKey', 'militaryPrivateKey', 'password'];
-    const foundSensitiveData: string[] = [];
+    try {
+      // LocalStorage'dagi sensitiv ma'lumotlarni tekshirish
+      const sensitiveKeys = ['privateKey', 'militaryPrivateKey', 'password'];
+      const foundSensitiveData: string[] = [];
 
-    sensitiveKeys.forEach(key => {
-      if (localStorage.getItem(key)) {
-        foundSensitiveData.push(key);
-      }
-    });
-
-    if (foundSensitiveData.length > 0) {
-      // Simulating an async operation
-      await new Promise(resolve => setTimeout(resolve, 50)); 
-      this.logSecurityEvent({
-        type: 'potential_breach',
-        severity: 'medium',
-        details: {
-          issue: 'Sensitive data in localStorage',
-          keys: foundSensitiveData,
-          recommendation: 'Move to secure storage or encrypt'
+      sensitiveKeys.forEach(key => {
+        if (localStorage.getItem(key)) {
+          foundSensitiveData.push(key);
         }
       });
+
+      if (foundSensitiveData.length > 0) {
+        // Simulating an async operation
+        await new Promise(resolve => setTimeout(resolve, 50)); 
+        this.logSecurityEvent({
+          type: 'potential_breach',
+          severity: 'medium',
+          details: {
+            issue: 'Sensitive data in localStorage',
+            keys: foundSensitiveData,
+            recommendation: 'Move to secure storage or encrypt'
+          }
+        });
+      }
+    } catch (error) {
+      // Silent error handling
+      console.warn('Memory security check failed:', error);
     }
   }
 
@@ -201,7 +206,7 @@ export class SecurityMonitor {
 
         this.addEventListener('error', (event) => {
           // Ensure the event is handled correctly and no unhandled promise rejection occurs
-          Promise.resolve().then(() => {
+          try {
             SecurityMonitor.getInstance().logSecurityEvent({
               type: 'potential_breach',
               severity: 'high',
@@ -212,7 +217,9 @@ export class SecurityMonitor {
                 originalError: event
               }
             });
-          }).catch(err => console.error('Error logging WebSocket event:', err));
+          } catch (err) {
+            console.warn('Error logging WebSocket event:', err);
+          }
         });
       }
     };

@@ -8,6 +8,8 @@ import { encryptMessage, isMilitaryEncryptionAvailable } from "../lib/militaryEn
 import { quantumSafe } from "../lib/quantumSafe";
 import { selfDestructMessages, DESTRUCT_CONFIGS } from "../lib/selfDestructMessages";
 import { securityMonitor } from "../lib/securityMonitor";
+import { toast } from "sonner"; // Assuming 'sonner' is used for toast notifications
+import { useQueryClient } from "@tanstack/react-query"; // Assuming react-query is used for data fetching
 
 // Placeholder for actual active chat data structure and getChatDisplayData function
 // In a real app, this would come from your state management or context
@@ -33,6 +35,93 @@ const getChatDisplayData = (chat) => {
     return { name, initials, avatar: chat.avatar, status: chat.status };
   }
 };
+
+// Mocking necessary context/state variables that are used in the `sendMessage` function
+// In a real application, these would be provided by React Context or props.
+const useChatContext = () => {
+  const [selectedChat, setSelectedChat] = useState<any>(activeChat); // Mock selectedChat
+  const [user, setUser] = useState<any>({ id: 'user1', name: 'Test User' }); // Mock user
+  const [messages, setMessages] = useState<any[]>([]); // Mock messages
+  const [isLoading, setIsLoading] = useState(false); // Mock isLoading state
+  const queryClient = useQueryClient(); // Mock queryClient
+
+  // Mock sendMessage function as it's being replaced
+  const sendMessage = async (content: string) => {
+    if (!content.trim() || !selectedChat || !user) return;
+
+    setIsLoading(true);
+    const tempId = Date.now().toString();
+
+    // Optimistically add message to UI
+    const optimisticMessage = {
+      id: tempId,
+      content: content.trim(),
+      senderId: user.id,
+      sender: user,
+      chatId: selectedChat.id,
+      createdAt: new Date(),
+      messageType: 'text' as const,
+      isEncrypted: true
+    };
+
+    setMessages(prev => [...prev, optimisticMessage]);
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      const response = await fetch(`/api/chats/${selectedChat.id}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          content: content.trim(),
+          messageType: 'text'
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Autentifikatsiya xatosi');
+        }
+        const errorText = await response.text();
+        throw new Error(`Xabar yuborishda xatolik: ${response.status} - ${errorText}`);
+      }
+
+      const newMessage = await response.json();
+
+      // Replace optimistic message with real one
+      setMessages(prev => prev.map(msg => 
+        msg.id === tempId ? newMessage : msg
+      ));
+
+      // Update chat list with new message
+      queryClient.invalidateQueries(['chats']);
+
+      // Success feedback
+      console.log('✅ Xabar muvaffaqiyatli yuborildi');
+
+    } catch (error) {
+      console.error('❌ Xabar yuborishda xatolik:', error);
+
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => msg.id !== tempId));
+
+      // Show specific error to user
+      const errorMessage = error instanceof Error ? error.message : 'Xabar yuborishda noma\'lum xatolik';
+      toast.error(`Xatolik: ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { selectedChat, user, messages, isLoading, sendMessage };
+};
+
 
 export default function Chat() {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);

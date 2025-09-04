@@ -428,6 +428,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { chatId } = req.params;
       const { content, messageType = 'text' } = req.body;
 
+      // Validate input
+      if (!content || typeof content !== 'string' || !content.trim()) {
+        return res.status(400).json({ message: "Message content is required" });
+      }
+
+      if (!chatId) {
+        return res.status(400).json({ message: "Chat ID is required" });
+      }
+
+      console.log(`📨 Creating message for chat ${chatId} from user ${req.userId}`);
+
       // Use military-grade encryption for message content
       let messageContent = content;
       let isEncrypted = false;
@@ -469,9 +480,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: message.createdAt?.toISOString(),
       });
 
+      console.log(`✅ Message created successfully: ${message.id}`);
       res.status(201).json(messageWithSender);
     } catch (error) {
-      res.status(500).json({ message: "Failed to send message" });
+      console.error(`❌ Error creating message for chat ${req.params.chatId}:`, error);
+      res.status(500).json({ 
+        message: "Failed to send message",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
