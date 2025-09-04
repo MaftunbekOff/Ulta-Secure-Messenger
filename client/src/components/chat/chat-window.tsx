@@ -346,7 +346,7 @@ export default function ChatWindow({ chatId, isMobile = false }: ChatWindowProps
 
             return (
               <MessageBubble
-                key={`${message.id}-${index}-${message.timestamp}`}
+                key={`${message.id}-${index}-${message.timestamp || Date.now()}`}
                 message={message}
                 isOwn={isOwn}
                 isMobile={isMobile}
