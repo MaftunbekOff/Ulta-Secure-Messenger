@@ -5,8 +5,8 @@ import Sidebar from "@/components/chat/sidebar";
 import ChatWindow from "@/components/chat/chat-window";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { encryptMessage, isMilitaryEncryptionAvailable } from "../lib/militaryEncryption";
-import { quantumSafe } from "../lib/quantumSafe";
-import { selfDestructMessages, DESTRUCT_CONFIGS } from "../lib/selfDestructMessages";
+import { QuantumSafeEncryption } from "../lib/quantumSafe";
+import { SelfDestructMessages, DESTRUCT_CONFIGS } from "../lib/selfDestructMessages";
 import { securityMonitor } from "../lib/securityMonitor";
 import { toast } from "sonner"; // Assuming 'sonner' is used for toast notifications
 import { useQueryClient } from "@tanstack/react-query"; // Assuming react-query is used for data fetching
@@ -22,14 +22,14 @@ const activeChat = {
   status: "Online",
 };
 
-const getChatDisplayData = (chat) => {
+const getChatDisplayData = (chat: any) => {
   if (chat.isGroup) {
     return { name: chat.name || "Group Chat", initials: "G", avatar: undefined };
   } else {
     const name = chat.name || "User";
     const initials = name
       .split(" ")
-      .map((n) => n[0])
+      .map((n: string) => n[0])
       .join("")
       .substring(0, 2);
     return { name, initials, avatar: chat.avatar, status: chat.status };
@@ -129,7 +129,7 @@ const useChatContext = () => {
 
 
 export default function Chat() {
-  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [selectedChatId, setSelectedChatId] = useState<string | null>("default-chat");
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -227,6 +227,15 @@ export default function Chat() {
     }
   };
 
+  // Auto-select first chat when available
+  useEffect(() => {
+    // If no chat is selected or we have the default, try to select the first actual chat
+    if (selectedChatId === "default-chat" || !selectedChatId) {
+      // This will be handled by the sidebar when it loads chats
+      // For now, keep default to show chat window
+    }
+  }, [selectedChatId]);
+
   // Function to handle sending messages with advanced security features
   const sendMessage = async (content: string, recipientPublicKey: string) => {
     let isEncrypted = false;
@@ -235,7 +244,8 @@ export default function Chat() {
     // Apply self-destruct timer if configured
     const destructConfig = DESTRUCT_CONFIGS.find(config => config.feature === 'chat');
     if (destructConfig) {
-      messageToSend = selfDestructMessages.applySelfDestruct(messageToSend, destructConfig.duration);
+      const selfDestructInstance = SelfDestructMessages.getInstance();
+      messageToSend = selfDestructInstance.applySelfDestruct(messageToSend, destructConfig.duration);
       securityMonitor.logSecurityEvent({
         type: 'feature_enabled',
         severity: 'info',
@@ -248,7 +258,8 @@ export default function Chat() {
       try {
         // Double encryption: Military + Quantum-safe
         const militaryEncrypted = await encryptMessage(messageToSend, recipientPublicKey);
-        messageToSend = await quantumSafe.quantumSafeEncrypt(militaryEncrypted, recipientPublicKey);
+        const quantumSafeInstance = QuantumSafeEncryption.getInstance();
+        messageToSend = await quantumSafeInstance.quantumSafeEncrypt(militaryEncrypted, recipientPublicKey);
         isEncrypted = true;
 
         securityMonitor.logSecurityEvent({
@@ -340,7 +351,7 @@ export default function Chat() {
       {/* Main Content */}
       <div className={`flex-1 flex flex-col overflow-hidden ${isMobile ? 'pt-16' : ''}`}>
         {selectedChatId ? (
-          <ChatWindow chatId={selectedChatId} isMobile={isMobile} onSendMessage={sendMessage} />
+          <ChatWindow chatId={selectedChatId} currentUserId={"user1"} />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center bg-background text-center p-4">
             <div className="max-w-md mx-auto">

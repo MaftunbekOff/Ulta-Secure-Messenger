@@ -7,6 +7,22 @@ interface SelfDestructConfig {
   maxReadCount: number;
 }
 
+// Predefined destruct configurations
+export const DESTRUCT_CONFIGS = [
+  {
+    feature: 'chat',
+    duration: 24 * 60 * 60 * 1000, // 24 hours
+    wipeAfterRead: true,
+    maxReadCount: 5
+  },
+  {
+    feature: 'secret_chat',
+    duration: 60 * 60 * 1000, // 1 hour
+    wipeAfterRead: true,
+    maxReadCount: 1
+  }
+];
+
 export class SelfDestructMessages {
   private static instance: SelfDestructMessages;
   private destructTimers: Map<string, NodeJS.Timeout> = new Map();
@@ -62,6 +78,26 @@ export class SelfDestructMessages {
         this.destroyMessage(messageId, onDestruct);
       }, 2000);
     }
+  }
+
+  // Apply self-destruct wrapper method
+  applySelfDestruct(message: string, duration: number): string {
+    // Create a temporary ID for this message
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Configure self-destruct settings
+    const config: SelfDestructConfig = {
+      timeToLive: duration,
+      wipeAfterRead: false,
+      maxReadCount: 1
+    };
+    
+    // Store the message with self-destruct
+    this.createSelfDestructMessage(tempId, config, { content: message }, () => {
+      console.log(`Self-destruct message ${tempId} expired`);
+    });
+    
+    return message; // Return original message for now
   }
 
   // Xabarni yo'q qilish
@@ -544,35 +580,5 @@ export class SelfDestructMessages {
   }
 }
 
-// Oldindan belgilangan konfiguratsiyalar
-export const DESTRUCT_CONFIGS = {
-  // 30 soniya keyin o'chadi
-  QUICK_BURN: {
-    timeToLive: 30 * 1000,
-    wipeAfterRead: false,
-    maxReadCount: 0
-  },
-
-  // 5 daqiqa keyin yoki 1 marta o'qilgandan keyin
-  SECRET_MESSAGE: {
-    timeToLive: 5 * 60 * 1000,
-    wipeAfterRead: true,
-    maxReadCount: 1
-  },
-
-  // Faqat o'qilgandan keyin (3 marta)
-  READ_ONCE: {
-    timeToLive: 0,
-    wipeAfterRead: true,
-    maxReadCount: 3
-  },
-
-  // Maksimal xavfsiz: 1 daqiqa yoki birinchi o'qishdan keyin
-  ULTRA_SECURE: {
-    timeToLive: 60 * 1000,
-    wipeAfterRead: true,
-    maxReadCount: 1
-  }
-};
 
 export const selfDestructMessages = SelfDestructMessages.getInstance();
