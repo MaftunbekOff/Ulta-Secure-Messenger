@@ -48,8 +48,41 @@ export default function MessageBubble({ message, isOwn, isMobile = false }: Mess
             // Cache decrypted content to avoid re-decryption
             sessionStorage.setItem(cacheKey, decrypted);
           } catch (error) {
-            console.error('Failed to decrypt military message:', error);
-            setDecryptedContent('🔒 Encrypted message (decrypt failed)');
+            console.warn('Military decryption failed, trying fallback:', error);
+            // Try basic fallback decryption
+            try {
+              // Try to parse and extract readable content
+              const parsed = JSON.parse(message.content);
+              if (parsed.encryptedContent) {
+                // Try base64 decode
+                try {
+                  const decoded = atob(parsed.encryptedContent);
+                  if (decoded && decoded.length > 0 && decoded !== parsed.encryptedContent) {
+                    setDecryptedContent(`🔓 ${decoded} (fallback decryption)`);
+                    sessionStorage.setItem(cacheKey, decoded);
+                  } else {
+                    throw new Error('Base64 decode failed');
+                  }
+                } catch (b64Error) {
+                  setDecryptedContent('🔒 Encrypted message (fallback failed)');
+                }
+              } else {
+                setDecryptedContent('🔒 Encrypted message (no content)');
+              }
+            } catch (parseError) {
+              // Try direct base64 decode
+              try {
+                const directDecode = atob(message.content);
+                if (directDecode && directDecode !== message.content) {
+                  setDecryptedContent(`🔓 ${directDecode} (direct decode)`);
+                  sessionStorage.setItem(cacheKey, directDecode);
+                } else {
+                  setDecryptedContent('🔒 Encrypted message (all methods failed)');
+                }
+              } catch (finalError) {
+                setDecryptedContent('🔒 Encrypted message (decrypt failed)');
+              }
+            }
           } finally {
             setIsDecrypting(false);
           }

@@ -251,67 +251,210 @@ export function encrypt(plaintext: string, publicKey?: string): string {
 export function decrypt(encryptedData: string, privateKey?: string): string {
   return secureCrypto(
     () => {
-      const data = JSON.parse(encryptedData);
-
-      if (data.version === 'military-v1') {
-        // Decrypt AES key if RSA encrypted
-        let key: Buffer;
-        if (privateKey && data.encryptedKey.length > 64) {
-          try {
-            key = crypto.privateDecrypt({
-              key: privateKey,
-              padding: crypto.constants.RSA_PKCS1_OAEP_PADDING
-            }, Buffer.from(data.encryptedKey, 'hex'));
-          } catch (keyError) {
-            console.warn('RSA key decryption failed, trying direct key');
-            key = Buffer.from(data.encryptedKey, 'hex');
-          }
-        } else {
-          key = Buffer.from(data.encryptedKey, 'hex');
-        }
-
-        const iv = Buffer.from(data.iv, 'hex');
-        const authTag = Buffer.from(data.authTag, 'hex');
-
-        const decipher = crypto.createDecipherGCM('aes-256-gcm', key, iv);
-        decipher.setAuthTag(authTag);
-
-        let decrypted = decipher.update(data.encryptedContent, 'hex', 'utf8');
-        decrypted += decipher.final('utf8');
-
-        return decrypted;
+      // Try to parse as JSON first
+      let data: any;
+      try {
+        data = JSON.parse(encryptedData);
+      } catch (jsonError) {
+        // If not JSON, try as legacy encrypted format
+        return tryLegacyDecryption(encryptedData);
       }
 
-      throw new Error('Unknown encryption version');
+      // Handle military-grade encryption versions
+      if (data.version === 'military-v1' || data.algorithm === 'aes-256-gcm-rsa-4096') {
+        return decryptMilitaryV1(data, privateKey);
+      }
+
+      // Handle hybrid encryption (new format)
+      if (data.encryptedContent && data.encryptedSymmetricKey && data.iv && data.authTag) {
+        return decryptHybridFormat(data, privateKey);
+      }
+
+      // Handle fallback versions
+      if (data.version === 'fallback-v1' || data.algorithm === 'aes-128-cbc') {
+        return decryptFallbackV1(data);
+      }
+
+      if (data.version === 'basic-v1' || data.algorithm === 'base64-obfuscated') {
+        return decryptBasicV1(data);
+      }
+
+      // Handle legacy AES-256-CBC format
+      if (data.encrypted && data.iv && data.algorithm === 'aes-256-cbc') {
+        return decryptLegacyAES(data);
+      }
+
+      // If no version specified, try to detect format
+      return autoDetectAndDecrypt(data, privateKey);
     },
     () => {
-      // Fallback decryption
-      try {
-        const data = JSON.parse(encryptedData);
-
-        if (data.version === 'fallback-v1') {
-          const key = Buffer.from(data.key, 'hex');
-          const decipher = crypto.createDecipher('aes-128-cbc', key);
-          let decrypted = decipher.update(data.encryptedContent, 'hex', 'utf8');
-          decrypted += decipher.final('utf8');
-          return decrypted;
-        }
-
-        if (data.version === 'basic-v1') {
-          // Reverse Base64 obfuscation
-          const reversed = data.encryptedContent.split('').reverse().join('');
-          return Buffer.from(reversed, 'base64').toString('utf8');
-        }
-
-        // Try as plain text if all else fails
-        return encryptedData;
-
-      } catch (parseError) {
-        // Return original if can't parse
-        console.warn('Could not decrypt, returning original');
-        return encryptedData;
-      }
+      // Ultimate fallback
+      return tryAllDecryptionMethods(encryptedData, privateKey);
     },
     'Decryption'
   );
+}
+
+// Helper functions for different encryption formats
+function decryptMilitaryV1(data: any, privateKey?: string): string {
+  let key: Buffer;
+  if (privateKey && data.encryptedKey && data.encryptedKey.length > 64) {
+    try {
+      key = crypto.privateDecrypt({
+        key: privateKey,
+        padding: crypto.constants.RSA_PKCS1_OAEP_PADDING
+      }, Buffer.from(data.encryptedKey, 'hex'));
+    } catch (keyError) {
+      console.warn('RSA key decryption failed, trying direct key');
+      key = Buffer.from(data.encryptedKey, 'hex');
+    }
+  } else {
+    key = Buffer.from(data.encryptedKey || data.key, 'hex');
+  }
+
+  const iv = Buffer.from(data.iv, 'hex');
+  const authTag = Buffer.from(data.authTag, 'hex');
+
+  const decipher = crypto.createDecipherGCM('aes-256-gcm', key, iv);
+  decipher.setAuthTag(authTag);
+
+  let decrypted = decipher.update(data.encryptedContent, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+}
+
+function decryptHybridFormat(data: any, privateKey?: string): string {
+  try {
+    // This is the new hybrid RSA+AES format
+    let symmetricKey: Buffer;
+    
+    if (privateKey) {
+      symmetricKey = crypto.privateDecrypt({
+        key: privateKey,
+        padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+        oaepHash: 'sha256'
+      }, Buffer.from(data.encryptedSymmetricKey, 'base64'));
+    } else {
+      // Try without RSA if no private key
+      throw new Error('Private key required for hybrid decryption');
+    }
+
+    const decipher = crypto.createDecipherGCM('aes-256-gcm', symmetricKey, Buffer.from(data.iv, 'base64'));
+    decipher.setAAD(Buffer.from('UltraSecureMessenger'));
+    decipher.setAuthTag(Buffer.from(data.authTag, 'base64'));
+
+    let decrypted = decipher.update(data.encryptedContent, 'base64', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (error) {
+    console.warn('Hybrid decryption failed:', error);
+    throw error;
+  }
+}
+
+function decryptFallbackV1(data: any): string {
+  const key = Buffer.from(data.key, 'hex');
+  const decipher = crypto.createDecipheriv('aes-128-cbc', key, Buffer.from(data.iv, 'hex'));
+  let decrypted = decipher.update(data.encryptedContent, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+}
+
+function decryptBasicV1(data: any): string {
+  const reversed = data.encryptedContent.split('').reverse().join('');
+  return Buffer.from(reversed, 'base64').toString('utf8');
+}
+
+function decryptLegacyAES(data: any): string {
+  const algorithm = 'aes-256-cbc';
+  const key = crypto.scryptSync('ultrasecure-messenger-key', 'salt', 32);
+  const iv = Buffer.from(data.iv, 'hex');
+
+  const decipher = crypto.createDecipheriv(algorithm, key, iv);
+  let decrypted = decipher.update(data.encrypted, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+}
+
+function tryLegacyDecryption(encryptedData: string): string {
+  // Try direct legacy AES-256-CBC decryption for old format
+  try {
+    const algorithm = 'aes-256-cbc';
+    const key = crypto.scryptSync('ultrasecure-messenger-key', 'salt', 32);
+    
+    // Assume it's base64 encoded
+    const encrypted = Buffer.from(encryptedData, 'base64');
+    const iv = encrypted.slice(0, 16);
+    const content = encrypted.slice(16);
+    
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    let decrypted = decipher.update(content, undefined, 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (error) {
+    console.warn('Legacy decryption failed:', error);
+    throw error;
+  }
+}
+
+function autoDetectAndDecrypt(data: any, privateKey?: string): string {
+  // Try to auto-detect encryption format based on available fields
+  if (data.encryptedContent && data.iv) {
+    if (data.authTag) {
+      // Looks like GCM
+      try {
+        return decryptMilitaryV1(data, privateKey);
+      } catch (error) {
+        console.warn('GCM auto-detect failed:', error);
+      }
+    } else {
+      // Looks like CBC
+      try {
+        return decryptFallbackV1(data);
+      } catch (error) {
+        console.warn('CBC auto-detect failed:', error);
+      }
+    }
+  }
+
+  if (data.encrypted && data.iv) {
+    // Legacy format
+    try {
+      return decryptLegacyAES(data);
+    } catch (error) {
+      console.warn('Legacy auto-detect failed:', error);
+    }
+  }
+
+  throw new Error('Could not auto-detect encryption format');
+}
+
+function tryAllDecryptionMethods(encryptedData: string, privateKey?: string): string {
+  const methods = [
+    () => tryLegacyDecryption(encryptedData),
+    () => {
+      // Try as base64 obfuscated
+      const reversed = encryptedData.split('').reverse().join('');
+      return Buffer.from(reversed, 'base64').toString('utf8');
+    },
+    () => {
+      // Try direct base64 decode
+      return Buffer.from(encryptedData, 'base64').toString('utf8');
+    }
+  ];
+
+  for (const method of methods) {
+    try {
+      const result = method();
+      if (result && result !== encryptedData) {
+        console.warn('⚠️ Decryption: Using fallback method');
+        return result;
+      }
+    } catch (error) {
+      // Continue to next method
+    }
+  }
+
+  console.warn('⚠️ All decryption methods failed, returning original');
+  return encryptedData;
 }

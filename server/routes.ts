@@ -656,13 +656,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let preview = content;
 
       // Try to decrypt military-grade messages
-      if (content.startsWith('{') && content.includes('encryptedContent')) {
+      if (content.startsWith('{') && (content.includes('encryptedContent') || content.includes('encrypted'))) {
         try {
           const decrypted = militaryDecrypt(content);
-          preview = decrypted.length > 50 ? decrypted.substring(0, 47) + "..." : decrypted;
+          preview = decrypted && decrypted !== content ? 
+            (decrypted.length > 50 ? decrypted.substring(0, 47) + "..." : decrypted) :
+            "🔒 End-to-end encrypted";
         } catch (error) {
-          // No logging of sensitive content
-          preview = "🔒 End-to-end encrypted";
+          // Try fallback decryption
+          try {
+            const parsed = JSON.parse(content);
+            if (parsed.encryptedContent || parsed.encrypted) {
+              // Try simple base64 decode for preview
+              const encodedContent = parsed.encryptedContent || parsed.encrypted;
+              try {
+                const decoded = Buffer.from(encodedContent, 'base64').toString('utf8');
+                if (decoded && decoded !== encodedContent && decoded.length > 0) {
+                  preview = decoded.length > 50 ? decoded.substring(0, 47) + "... (fallback)" : decoded + " (fallback)";
+                } else {
+                  preview = "🔒 End-to-end encrypted";
+                }
+              } catch (b64Error) {
+                preview = "🔒 End-to-end encrypted";
+              }
+            } else {
+              preview = "🔒 End-to-end encrypted";
+            }
+          } catch (parseError) {
+            preview = "🔒 End-to-end encrypted";
+          }
         }
       }
       // Handle legacy encrypted format (AES-256-CBC) - try to decrypt
