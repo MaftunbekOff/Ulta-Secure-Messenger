@@ -19,7 +19,7 @@ externalPort = 80
 PORT = "5000"
 
 [workflows]
-runButton = "Development Server"
+runButton = "Working Development Server"
 
 [[workflows.workflow]]
 name = "Project"
@@ -197,6 +197,19 @@ args = "cargo run --bin encryption_engine -- benchmark"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cargo run --bin metrics"
+
+[[workflows.workflow]]
+name = "Working Development Server"
+author = 45696961
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "rustup default stable"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
 
 [agent]
 expertMode = true
