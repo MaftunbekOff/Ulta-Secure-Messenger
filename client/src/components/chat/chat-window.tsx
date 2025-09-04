@@ -24,7 +24,7 @@ interface ChatWindowProps {
   currentUserName: string;
 }
 
-export function ChatWindow({ chatId, currentUserId, currentUserName }: ChatWindowProps) {
+export default function ChatWindow({ chatId, currentUserId, currentUserName }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
