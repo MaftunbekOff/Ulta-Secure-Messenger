@@ -37,6 +37,7 @@ export default defineConfig({
       port: 5000,
       host: '0.0.0.0',
       clientPort: 5000,
+      overlay: false,
     },
     host: '0.0.0.0',
     port: 5000, // Frontend dev server port

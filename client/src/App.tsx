@@ -42,13 +42,16 @@ function App() {
   // Handle unhandled promise rejections
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      // Suppress network-related errors during development
+      if (event.reason?.name === 'TypeError' && 
+          (event.reason?.message?.includes('fetch') || 
+           event.reason?.message?.includes('Failed to fetch'))) {
+        event.preventDefault();
+        return;
+      }
+      
       console.warn('Unhandled promise rejection:', event.reason);
-
-      // Prevent the default error reporting
       event.preventDefault();
-
-      // You can add custom error reporting here if needed
-      // For now, we'll just suppress the errors to clean up console
     };
 
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
