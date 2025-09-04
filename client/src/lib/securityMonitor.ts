@@ -46,7 +46,11 @@ export class SecurityMonitor {
     // Xavfli faoliyatni aniqlash
     this.detectAnomalies(fullEvent);
 
-    console.log(`🚨 Security event logged:`, fullEvent);
+    // Development muhitida faqat muhim eventlarni log qilish
+    if (fullEvent.severity === 'critical' || 
+        (fullEvent.severity === 'high' && fullEvent.type !== 'unusual_activity')) {
+      console.log(`🚨 Security event logged:`, fullEvent);
+    }
   }
 
   // Ogohlantirish callback'ini ro'yxatga olish
@@ -155,13 +159,15 @@ export class SecurityMonitor {
     return issues;
   }
 
-  // Developer tools ochiqligini aniqlash
+  // Developer tools ochiqligini aniqlash (kamroq sezgir)
   private isDevToolsOpen(): boolean {
-    const threshold = 160;
-    return (
-      window.outerHeight - window.innerHeight > threshold ||
-      window.outerWidth - window.innerWidth > threshold
-    );
+    // Development muhitida unchalik sezgir bo'lmaymiz
+    const threshold = 300; // Yuqori chegara
+    const heightDiff = window.outerHeight - window.innerHeight;
+    const widthDiff = window.outerWidth - window.innerWidth;
+    
+    // Faqat juda katta farq bo'lgandagina warning berish
+    return heightDiff > threshold && widthDiff > 50;
   }
 
   // Xotira xavfsizligini tekshirish
@@ -311,18 +317,21 @@ export class SecurityMonitor {
       // Tarmoq monitoringini boshlash
       this.monitorNetworkSecurity();
 
-      // Har 30 soniyada tekshirish
+      // Har 2 daqiqada tekshirish (kamroq tez-tez)
       setInterval(async () => {
         if (this.isMonitoring) {
           try {
             const issues = this.checkBrowserSecurity();
-            issues.forEach(issue => this.logSecurityEvent(issue));
+            // Faqat critical va high severity eventlarni log qilish
+            issues.filter(issue => 
+              issue.severity === 'critical' || issue.severity === 'high'
+            ).forEach(issue => this.logSecurityEvent(issue));
             await this.checkMemorySecurity();
           } catch (error) {
-            console.warn('Periodic security check failed:', error);
+            // Silent error handling
           }
         }
-      }, 30000);
+      }, 120000); // 2 daqiqa
     } catch (error) {
       console.error('Security monitoring start failed:', error);
       throw error;

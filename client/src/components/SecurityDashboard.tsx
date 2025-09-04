@@ -59,7 +59,7 @@ export function SecurityDashboard() {
     // Initial check
     updateSecurityReport();
     
-    const interval = setInterval(checkSecurityIssues, 10000);
+    const interval = setInterval(checkSecurityIssues, 60000); // Har 1 daqiqada
 
     return () => {
       clearInterval(interval);
