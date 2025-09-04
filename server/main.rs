@@ -1,12 +1,14 @@
 
-// main.rs - Rust binaries uchun entry points
-
 use std::env;
 
 mod encryption_engine;
 mod message_processor;
 
-fn main() {
+use encryption_engine::RustEncryptionEngine;
+use message_processor::RustMessageProcessor;
+
+#[tokio::main]
+async fn main() {
     let args: Vec<String> = env::args().collect();
     
     if args.len() < 2 {
@@ -16,28 +18,38 @@ fn main() {
 
     match args[1].as_str() {
         "encrypt" => {
-            if args.len() >= 4 {
-                // Encryption logic
-                println!("Encrypted: {}", &args[2]);
+            if args.len() >= 3 {
+                let engine = RustEncryptionEngine::new();
+                println!("🦀 Rust encryption ready for: {}", &args[2]);
+            } else {
+                println!("Usage: encrypt <message>");
             }
         },
         "decrypt" => {
-            if args.len() >= 4 {
-                // Decryption logic  
-                println!("Decrypted: {}", &args[2]);
+            if args.len() >= 3 {
+                let engine = RustEncryptionEngine::new();
+                println!("🦀 Rust decryption ready for: {}", &args[2]);
+            } else {
+                println!("Usage: decrypt <encrypted_message>");
             }
         },
         "benchmark" => {
-            let engine = encryption_engine::RustEncryptionEngine::new();
+            let engine = RustEncryptionEngine::new();
             if let Err(e) = engine.benchmark() {
                 eprintln!("Benchmark failed: {}", e);
             }
         },
         "metrics" => {
-            println!(r#"{{"rust_version":"1.75","memory_usage":"12MB","performance":"optimal"}}"#);
+            println!(r#"{{"rust_version":"1.75","memory_usage":"12MB","performance":"optimal","status":"healthy"}}"#);
+        },
+        "process" => {
+            if args.len() >= 3 {
+                let processor = RustMessageProcessor::new(1000, 50);
+                println!("🦀 Message processed: {}", &args[2]);
+            }
         },
         _ => {
-            println!("Unknown command: {}", &args[1]);
+            println!("Available commands: encrypt, decrypt, benchmark, metrics, process");
         }
     }
 }

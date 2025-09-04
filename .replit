@@ -173,5 +173,30 @@ mode = "sequential"
 task = "shell.exec"
 args = "npm run dev"
 
+[[workflows.workflow]]
+name = "Rust Setup & Test"
+author = 45696961
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "rustup default stable"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cargo check"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cargo build --release"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cargo run --bin encryption_engine -- benchmark"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cargo run --bin metrics"
+
 [agent]
 expertMode = true

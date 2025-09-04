@@ -120,14 +120,8 @@ export class RustIntegration {
   }
 }
 
-// Export singleton instance
+// Clean singleton export
 export const rustIntegration = RustIntegration.getInstance();
-import { spawn } from 'child_process';
-import { promisify } from 'util';
-import fs from 'fs';
-import path from 'path';
-
-class RustIntegration {
   private rustBinaryPath: string;
 
   constructor() {

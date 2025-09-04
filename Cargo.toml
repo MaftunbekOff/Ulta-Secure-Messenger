@@ -13,8 +13,12 @@ name = "encryption_engine"
 path = "server/main.rs"
 
 [[bin]]
-name = "message_processor"
-path = "server/message_processor.rs"
+name = "message_processor" 
+path = "server/main.rs"
+
+[[bin]]
+name = "metrics"
+path = "server/main.rs"
 
 [dependencies]
 aes-gcm = "0.10"
