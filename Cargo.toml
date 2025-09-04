@@ -4,10 +4,6 @@ name = "ultrasecure-messenger-rust"
 version = "0.1.0"
 edition = "2021"
 
-[lib]
-name = "encryption_engine"
-crate-type = ["cdylib", "rlib"]
-
 [[bin]]
 name = "encryption_engine"
 path = "server/main.rs"

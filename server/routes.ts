@@ -604,7 +604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   const httpServer = createServer(app);
-  
+
   // WebSocket server setup
   const wss = new WebSocketServer({
     server: httpServer,
