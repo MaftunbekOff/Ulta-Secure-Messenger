@@ -22,12 +22,19 @@ interface ChatWindowProps {
 
 export default function ChatWindow({ chatId = 'default', currentUserId = 'user1' }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
+  // Get the dynamic WebSocket URL based on current domain
+  const getWebSocketUrl = () => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    return `${protocol}//${host}:8080/ws`;
+  };
+
   const { 
     isConnected, 
     sendMessage, 
     lastMessage,
     connectionStatus 
-  } = useWebSocket(`ws://localhost:8080/ws`);
+  } = useWebSocket(getWebSocketUrl());
 
   // Handle incoming messages
   useEffect(() => {
@@ -95,7 +102,7 @@ export default function ChatWindow({ chatId = 'default', currentUserId = 'user1'
     setMessages(prev => [...prev, localMessage]);
 
     // Send via WebSocket
-    sendMessage(JSON.stringify(message));
+    sendMessage(message);
   };
 
   return (
