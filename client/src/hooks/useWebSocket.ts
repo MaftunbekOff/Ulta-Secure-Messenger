@@ -30,6 +30,19 @@ export function useWebSocket() {
   const [error, setError] = useState<string | null>(null);
   const onMessage = null; // This was not defined in the original snippet, keeping it null for now.
 
+  // Add status indicator to DOM for performance monitoring
+  const addStatusIndicator = () => {
+    let indicator = document.querySelector('[data-websocket-status]') as HTMLElement;
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.setAttribute('data-websocket-status', 'disconnected');
+      indicator.style.display = 'none';
+      document.body.appendChild(indicator);
+    }
+    return indicator;
+  };
+
+
   const connectWebSocket = useCallback(() => {
     if (isConnecting || socket?.readyState === WebSocket.OPEN) {
       return;
@@ -41,7 +54,7 @@ export function useWebSocket() {
       // Replit environment WebSocket URL configuration
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = window.location.hostname;
-      
+
       // Auto-detect Replit environment and set correct port
       let wsUrl;
       if (host.includes('replit.dev') || host.includes('replit.co') || host.includes('replit.app')) {
