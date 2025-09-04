@@ -1,0 +1,118 @@
+   Checking ultrasecure-messenger-rust v0.1.0 (/home/runner/workspace)
+warning: fields `max_queue_size` and `batch_size` are never read
+  --> server/message_processor.rs:12:5
+   |
+11 | pub struct RustMessageProcessor {
+   |            -------------------- fields in this struct
+12 |     max_queue_size: usize,
+   |     ^^^^^^^^^^^^^^
+13 |     batch_size: usize,
+   |     ^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: `ultrasecure-messenger-rust` (bin "message_processor") generated 1 warning
+error[E0432]: unresolved import `rsa::sha2`
+   --> server/encryption_engine.rs:7:46
+    |
+7   | use rsa::{RsaPrivateKey, RsaPublicKey, Oaep, sha2::Sha256};
+    |                                              ^^^^ could not find `sha2` in `rsa`
+    |
+note: found an item that was configured out
+   --> /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rsa-0.9.8/src/lib.rs:243:9
+    |
+243 | pub use sha2;
+    |         ^^^^
+note: the item is gated behind the `sha2` feature
+   --> /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rsa-0.9.8/src/lib.rs:242:7
+    |
+242 | #[cfg(feature = "sha2")]
+    |       ^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::env`
+ --> server/encryption_engine.rs:2:9
+  |
+2 | pub use std::env;
+  |         ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: use of deprecated function `base64::encode`: Use Engine::encode
+  --> server/encryption_engine.rs:93:40
+   |
+93 |             encrypted_content: base64::encode(encrypted_content),
+   |                                        ^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated function `base64::encode`: Use Engine::encode
+  --> server/encryption_engine.rs:94:46
+   |
+94 | ...   encrypted_symmetric_key: base64::encode(encrypted_symmetric_key),
+   |                                        ^^^^^^
+
+warning: use of deprecated function `base64::encode`: Use Engine::encode
+  --> server/encryption_engine.rs:95:28
+   |
+95 |             nonce: base64::encode(nonce),
+   |                            ^^^^^^
+
+warning: use of deprecated function `base64::decode`: Use Engine::decode
+   --> server/encryption_engine.rs:112:41
+    |
+112 | ...   let encrypted_content = base64::decode(&encrypted_msg.encrypted_c...
+    |                                       ^^^^^^
+
+warning: use of deprecated function `base64::decode`: Use Engine::decode
+   --> server/encryption_engine.rs:114:47
+    |
+114 | ...   let encrypted_symmetric_key = base64::decode(&encrypted_msg.encry...
+    |                                             ^^^^^^
+
+warning: use of deprecated function `base64::decode`: Use Engine::decode
+   --> server/encryption_engine.rs:116:35
+    |
+116 |         let nonce_bytes = base64::decode(&encrypted_msg.nonce)
+    |                                   ^^^^^^
+
+warning: unused variable: `message`
+   --> server/encryption_engine.rs:179:5
+    |
+179 |     message: *const std::os::raw::c_char,
+    |     ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_message`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `public_key_pem`
+   --> server/encryption_engine.rs:180:5
+    |
+180 |     public_key_pem: *const std::os::raw::c_char,
+    |     ^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_public_key_pem`
+
+warning: unused variable: `output`
+   --> server/encryption_engine.rs:181:5
+    |
+181 |     output: *mut std::os::raw::c_char,
+    |     ^^^^^^ help: if this is intentional, prefix it with an underscore: `_output`
+
+warning: unused variable: `output_len`
+   --> server/encryption_engine.rs:182:5
+    |
+182 |     output_len: usize,
+    |     ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_output_len`
+
+warning: unused variable: `engine`
+  --> server/main.rs:21:21
+   |
+21 |                 let engine = RustEncryptionEngine::new();
+   |                     ^^^^^^ help: if this is intentional, prefix it with an underscore: `_engine`
+
+warning: unused variable: `engine`
+  --> server/main.rs:29:21
+   |
+29 |                 let engine = RustEncryptionEngine::new();
+   |                     ^^^^^^ help: if this is intentional, prefix it with an underscore: `_engine`
+
+For more information about this error, try `rustc --explain E0432`.
+warning: `ultrasecure-messenger-rust` (bin "encryption_engine") generated 13 warnings
+error: could not compile `ultrasecure-messenger-rust` (bin "encryption_engine") due to 1 previous error; 13 warnings emitted
