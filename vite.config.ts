@@ -38,6 +38,8 @@ export default defineConfig({
       host: '0.0.0.0',
       clientPort: 5000,
       overlay: false,
+      timeout: 60000,
+      pingTimeout: 60000,
     },
     host: '0.0.0.0',
     port: 5000, // Frontend dev server port

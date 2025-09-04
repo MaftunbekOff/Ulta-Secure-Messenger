@@ -44,20 +44,26 @@ function App() {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       // Suppress all Vite HMR and development-related errors
       const reason = event.reason;
-      const message = reason?.message || '';
+      const message = reason?.message || String(reason) || '';
       const stack = reason?.stack || '';
       
-      // Filter out Vite HMR, fetch, and development server errors
-      if (
+      // Comprehensive filter for all development server errors
+      const isDevelopmentError = 
         reason?.name === 'TypeError' ||
         message.includes('fetch') ||
         message.includes('Failed to fetch') ||
         message.includes('NetworkError') ||
+        message.includes('ping') ||
+        message.includes('waitForSuccessfulPing') ||
         stack.includes('vite/client') ||
         stack.includes('@vite/client') ||
-        stack.includes('ping') ||
-        stack.includes('waitForSuccessfulPing')
-      ) {
+        stack.includes('eruda.js') ||
+        stack.includes('injected.js') ||
+        stack.includes('devtools') ||
+        message.toLowerCase().includes('vite') ||
+        message.toLowerCase().includes('hmr');
+      
+      if (isDevelopmentError) {
         event.preventDefault();
         return;
       }
