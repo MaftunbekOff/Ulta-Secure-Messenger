@@ -283,6 +283,9 @@ export default function Login() {
                         // If it starts with a number or underscore, remove all leading numbers and underscores
                         filtered = filtered.replace(/^[0-9_]+/, '');
 
+                        // Remove consecutive underscores (replace multiple underscores with single one)
+                        filtered = filtered.replace(/_+/g, '_');
+
                         setUsernameValue(filtered);
                         registerForm.setValue("username", filtered, {
                           shouldValidate: true,

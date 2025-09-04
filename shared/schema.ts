@@ -119,6 +119,8 @@ export const loginSchema = z.object({
 export const registerSchema = z.object({
   username: z.string().min(3).max(50).regex(/^[a-zA-Z][a-zA-Z0-9_]*$/, {
     message: "Username must start with a letter and contain only letters, numbers, and underscores"
+  }).refine((val) => !/__/.test(val), {
+    message: "Username cannot contain consecutive underscores"
   }),
   email: z.string().email(),
   password: z.string().min(6),
