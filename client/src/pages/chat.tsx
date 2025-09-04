@@ -45,9 +45,12 @@ const useChatContext = () => {
   const [isLoading, setIsLoading] = useState(false); // Mock isLoading state
   const queryClient = useQueryClient(); // Mock queryClient
 
-  // Mock sendMessage function as it's being replaced
+  // Improved sendMessage function with better error handling
   const sendMessage = async (content: string) => {
-    if (!content.trim() || !selectedChat || !user) return;
+    if (!content.trim() || !selectedChat || !user) {
+      console.warn('Missing required data for sending message');
+      return;
+    }
 
     setIsLoading(true);
     const tempId = Date.now().toString();
@@ -72,6 +75,8 @@ const useChatContext = () => {
         throw new Error('Authentication token not found');
       }
 
+      console.log('Sending message to chat:', selectedChat.id);
+
       const response = await fetch(`/api/chats/${selectedChat.id}/messages`, {
         method: 'POST',
         headers: {
@@ -83,6 +88,40 @@ const useChatContext = () => {
           messageType: 'text'
         }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
+
+      const newMessage = await response.json();
+      console.log('Message sent successfully:', newMessage.id);
+
+      // Replace optimistic message with real message
+      setMessages(prev => prev.map(msg => 
+        msg.id === tempId ? newMessage : msg
+      ));
+
+      // Invalidate messages cache
+      queryClient.invalidateQueries({ 
+        queryKey: ['messages', selectedChat.id] 
+      });
+
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => msg.id !== tempId));
+      
+      // Show error toast
+      toast({
+        variant: "destructive",
+        title: "Xabar yuborishda xatolik",
+        description: error instanceof Error ? error.message : "Qaytadan urinib ko'ring"
+      });
+    } finally {
+      setIsLoading(false);
+    }
 
       if (!response.ok) {
         if (response.status === 401) {

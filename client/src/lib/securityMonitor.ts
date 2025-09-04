@@ -113,43 +113,51 @@ export class SecurityMonitor {
   checkBrowserSecurity(): SecurityEvent[] {
     const issues: SecurityEvent[] = [];
 
-    // HTTPS tekshirish
-    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-      issues.push({
-        type: 'potential_breach',
-        severity: 'high',
-        timestamp: Date.now(),
-        details: {
-          issue: 'Not using HTTPS',
-          recommendation: 'Switch to HTTPS for secure communication'
-        }
-      });
-    }
+    try {
+      // HTTPS tekshirish (faqat production da)
+      if (typeof window !== 'undefined' && window.location && 
+          window.location.protocol !== 'https:' && 
+          window.location.hostname !== 'localhost' && 
+          !window.location.hostname.includes('replit')) {
+        issues.push({
+          type: 'potential_breach',
+          severity: 'high',
+          timestamp: Date.now(),
+          details: {
+            issue: 'Not using HTTPS',
+            recommendation: 'Switch to HTTPS for secure communication'
+          }
+        });
+      }
 
-    // Crypto API mavjudligini tekshirish
-    if (!window.crypto || !window.crypto.subtle) {
-      issues.push({
-        type: 'encryption_failure',
-        severity: 'critical',
-        timestamp: Date.now(),
-        details: {
-          issue: 'Web Crypto API not available',
-          impact: 'Cannot perform secure encryption'
-        }
-      });
-    }
+      // Crypto API mavjudligini tekshirish
+      if (typeof window !== 'undefined' && (!window.crypto || !window.crypto.subtle)) {
+        issues.push({
+          type: 'encryption_failure',
+          severity: 'critical',
+          timestamp: Date.now(),
+          details: {
+            issue: 'Web Crypto API not available',
+            impact: 'Cannot perform secure encryption'
+          }
+        });
+      }
 
-    // Developer tools ochiq emasligini tekshirish
-    if (this.isDevToolsOpen()) {
-      issues.push({
-        type: 'unusual_activity',
-        severity: 'medium',
-        timestamp: Date.now(),
-        details: {
-          issue: 'Developer tools detected',
-          warning: 'Sensitive data may be exposed'
-        }
-      });
+      // Developer tools tekshirishni development da skip qilish
+      if (process.env.NODE_ENV === 'production' && this.isDevToolsOpen()) {
+        issues.push({
+          type: 'unusual_activity',
+          severity: 'medium',
+          timestamp: Date.now(),
+          details: {
+            issue: 'Developer tools detected',
+            warning: 'Sensitive data may be exposed'
+          }
+        });
+      }
+    } catch (error) {
+      // Silent error handling
+      console.warn('Security check failed:', error);
     }
 
     return issues;

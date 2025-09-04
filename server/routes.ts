@@ -480,13 +480,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: message.createdAt?.toISOString(),
       });
 
+      // Clear message cache for this chat
+      const cacheKeys = Array.from(messageCache.keys()).filter(key => key.startsWith(`${chatId}:`));
+      cacheKeys.forEach(key => messageCache.delete(key));
+
       console.log(`✅ Message created successfully: ${message.id}`);
       res.status(201).json(messageWithSender);
     } catch (error) {
       console.error(`❌ Error creating message for chat ${req.params.chatId}:`, error);
       res.status(500).json({ 
         message: "Failed to send message",
-        error: error instanceof Error ? error.message : "Unknown error"
+        error: error instanceof Error ? error.message : "Unknown error",
+        chatId: req.params.chatId
       });
     }
   });
