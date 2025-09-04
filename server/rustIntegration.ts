@@ -276,6 +276,14 @@ export class RustIntegration {
     return crypto.createHash('sha256').update(data).digest('hex');
   }
 
+  // Health check function
+  async healthCheck(): Promise<boolean> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+    return this.rustAvailable;
+  }
+
   // Status check
   getStatus(): { rust: boolean; initialized: boolean } {
     return {

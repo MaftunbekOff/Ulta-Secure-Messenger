@@ -23,7 +23,7 @@ externalPort = 8080
 PORT = "5000"
 
 [workflows]
-runButton = "Complete UltraSecure Stack"
+runButton = "UltraSecure Full Stack"
 
 [[workflows.workflow]]
 name = "Project"
@@ -689,6 +689,39 @@ args = "sleep 3"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "echo \"⚡ Starting React frontend on port 5000...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
+[[workflows.workflow]]
+name = "UltraSecure Full Stack"
+author = 45696961
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🚀 Starting UltraSecure Messenger Full Stack...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🌐 Go WebSocket server ishga tushirilmoqda (port 8080)...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "export WS_PORT=8080"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "go run server/websocket.go &"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "sleep 3"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"⚡ React frontend ishga tushirilmoqda (port 5000)...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
