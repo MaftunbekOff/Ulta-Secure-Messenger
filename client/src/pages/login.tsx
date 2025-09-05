@@ -303,17 +303,24 @@ export default function Login() {
                   <Label htmlFor="birth-date" className="text-sm font-medium">
                     📅 Date of birth
                   </Label>
-                  <Input
-                    id="birth-date"
-                    type="date"
-                    value={birthDate ? birthDate.toISOString().split('T')[0] : ''}
-                    onChange={(e) => {
-                      const date = e.target.value ? new Date(e.target.value) : null;
-                      setBirthDate(date);
-                    }}
-                    className="h-12 text-base w-full rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white px-4 py-3"
-                    data-testid="input-birth-date"
-                  />
+                  <div className="flex items-center gap-3">
+                    <Input
+                      id="birth-date"
+                      type="date"
+                      value={birthDate ? birthDate.toISOString().split('T')[0] : ''}
+                      onChange={(e) => {
+                        const date = e.target.value ? new Date(e.target.value) : null;
+                        setBirthDate(date);
+                      }}
+                      className="h-12 text-base flex-1 max-w-[200px] rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white px-4 py-3"
+                      data-testid="input-birth-date"
+                    />
+                    {birthDate && (
+                      <div className="text-base font-medium text-blue-600 dark:text-blue-400 min-w-0">
+                        {Math.floor((new Date().getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25))} yosh
+                      </div>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 mt-1">
                     🖥️ Desktop va 📱 Mobile-da ishlaydi
                   </p>
