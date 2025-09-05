@@ -300,20 +300,19 @@ export default function Login() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="birth-date">Date of birth</Label>
-                  <DatePicker
+                  <Label htmlFor="birth-date" className="text-sm font-medium">
+                    📅 Tug'ilgan sana
+                  </Label>
+                  <Input
                     id="birth-date"
-                    selected={birthDate}
-                    onChange={(date: Date | null) => setBirthDate(date)}
-                    placeholderText="Tug'ilgan sanani tanlang"
-                    dateFormat="dd/MM/yyyy"
-                    showYearDropdown
-                    showMonthDropdown
-                    dropdownMode="select"
-                    maxDate={new Date()}
-                    className="h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    data-testid="datepicker-birth-date"
+                    type="date"
+                    placeholder="YYYY-MM-DD"
+                    className="h-12 text-base w-full rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white px-4 py-3 text-center sm:text-left"
+                    data-testid="input-birth-date"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    🖥️ Desktop va 📱 Mobile-da ishlaydi
+                  </p>
                 </div>
 
                 <FormField
