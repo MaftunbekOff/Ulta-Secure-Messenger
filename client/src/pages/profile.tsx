@@ -711,6 +711,31 @@ export default function Profile() {
     },
   });
 
+  // Sync form with user data and parse phone number
+  useEffect(() => {
+    if (user) {
+      profileForm.reset({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+        phoneNumber: user.phoneNumber || "",
+        displayUsername: user.displayUsername || "",
+        profileImageUrl: user.profileImageUrl || "",
+      });
+
+      // Parse phone number and set country code
+      if (user.phoneNumber) {
+        // Extract country code from phone number
+        for (const country of countryCodes) {
+          if (user.phoneNumber.startsWith(country.code)) {
+            setSelectedCountryCode(country.code);
+            break;
+          }
+        }
+      }
+    }
+  }, [user, profileForm]);
+
   const passwordForm = useForm<ChangePasswordData>({
     resolver: zodResolver(changePasswordSchema),
     defaultValues: {
