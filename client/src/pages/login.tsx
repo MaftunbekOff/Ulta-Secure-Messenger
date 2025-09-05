@@ -314,9 +314,18 @@ export default function Login() {
                             let inputValue = e.target.value;
                             console.log('🗓️ Manual date input:', inputValue);
                             
+                            // Agar backspace bosilgan bo'lsa, input qiymatini o'zgarmasdan qoldirish
+                            if (inputValue.length < (field.value || '').length) {
+                              field.onChange(inputValue);
+                              return;
+                            }
+                            
                             // Remove all non-digit characters first
                             let digitsOnly = inputValue.replace(/\D/g, '');
                             console.log('🗓️ Digits only:', digitsOnly);
+                            
+                            // Limit to 8 digits maximum (DDMMYYYY)
+                            digitsOnly = digitsOnly.slice(0, 8);
                             
                             // Format as DD/MM/YYYY
                             let formattedValue = '';
