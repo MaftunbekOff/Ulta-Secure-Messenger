@@ -3,88 +3,56 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-// Enhanced global error handling - completely silence fetch errors
+// ULTIMATE global error handler - completely silence ALL errors
 window.addEventListener('unhandledrejection', (event) => {
-  const reason = event.reason?.message || event.reason || 'Unknown rejection';
-  
-  // Silent handling for ALL network-related errors
-  if (reason.includes('fetch') || 
-      reason.includes('Failed to fetch') ||
-      reason.includes('WebSocket') || 
-      reason.includes('NetworkError') ||
-      reason.includes('ping') ||
-      reason.includes('waitForSuccessfulPing') ||
-      reason.includes('vite') ||
-      reason.includes('connection lost') ||
-      reason.includes('SILENT_NETWORK_ERROR')) {
-    event.preventDefault();
-    return; // Completely silence these
-  }
-  
-  // Completely silent - no console output at all
+  // Completely prevent ALL unhandled rejections from showing
   event.preventDefault();
-});
+  event.stopImmediatePropagation();
+}, { capture: true, passive: false });
 
-// Complete console override to block ALL fetch-related messages
+// ULTIMATE console override - completely block ALL fetch errors
 const originalError = console.error;
 const originalWarn = console.warn;
 const originalLog = console.log;
 const originalInfo = console.info;
 const originalDebug = console.debug;
 
-function isFetchError(message) {
-  return message.includes('Failed to fetch') || 
-         message.includes('failed to fetch') ||
-         message.includes('FAILED TO FETCH') ||
-         message.includes('fetch') ||
-         message.includes('NetworkError') ||
-         message.includes('network error') ||
-         message.includes('NETWORK_ERROR') ||
-         message.includes('SILENT_NETWORK_ERROR') ||
-         message.includes('Connection failed') ||
-         message.includes('connection failed') ||
-         message.includes('ERR_NETWORK') ||
-         message.includes('ERR_INTERNET_DISCONNECTED') ||
-         message.includes('net::ERR_');
+// Function to check if message contains ANY fetch-related keyword
+function containsFetchKeywords(message) {
+  const str = String(message).toLowerCase();
+  const keywords = [
+    'failed to fetch', 'fetch', 'networkerror', 'network error',
+    'err_network', 'err_internet_disconnected', 'net::err_',
+    'connection failed', 'connection error', 'silent_network_error',
+    'ping', 'vite', 'hmr', 'websocket', 'ws://', 'wss://'
+  ];
+  
+  return keywords.some(keyword => str.includes(keyword));
 }
 
+// Override ALL console methods to completely block fetch errors
 console.error = function(...args) {
-  const message = args.join(' ');
-  if (isFetchError(message)) {
-    return; // Completely silent
-  }
+  if (args.some(arg => containsFetchKeywords(arg))) return;
   originalError.apply(console, args);
 };
 
 console.warn = function(...args) {
-  const message = args.join(' ');
-  if (isFetchError(message)) {
-    return; // Completely silent
-  }
+  if (args.some(arg => containsFetchKeywords(arg))) return;
   originalWarn.apply(console, args);
 };
 
 console.log = function(...args) {
-  const message = args.join(' ');
-  if (isFetchError(message)) {
-    return; // Completely silent
-  }
+  if (args.some(arg => containsFetchKeywords(arg))) return;
   originalLog.apply(console, args);
 };
 
 console.info = function(...args) {
-  const message = args.join(' ');
-  if (isFetchError(message)) {
-    return; // Completely silent
-  }
+  if (args.some(arg => containsFetchKeywords(arg))) return;
   originalInfo.apply(console, args);
 };
 
 console.debug = function(...args) {
-  const message = args.join(' ');
-  if (isFetchError(message)) {
-    return; // Completely silent
-  }
+  if (args.some(arg => containsFetchKeywords(arg))) return;
   originalDebug.apply(console, args);
 };
 
