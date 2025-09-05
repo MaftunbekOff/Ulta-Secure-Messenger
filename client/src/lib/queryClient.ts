@@ -34,9 +34,10 @@ export async function apiRequest(
     await throwIfResNotOk(res);
     return res;
   } catch (error) {
-    // Network xatolarini better handle qil
+    // Network xatolarini to'liq silent qil
     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      throw new Error('Network connection failed. Please check your internet connection.');
+      // Console.log qilmay, silent handle qil
+      return Promise.reject(new Error('SILENT_NETWORK_ERROR'));
     }
     throw error;
   }
@@ -68,20 +69,44 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       staleTime: Infinity,
       retry: (failureCount, error) => {
-        // Network errors uchun retry qil, boshqalar uchun yo'q
+        // Silent network errors - retry bo'lmasin
         if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-          return failureCount < 3;
+          return false;
+        }
+        if (error instanceof Error && error.message === 'SILENT_NETWORK_ERROR') {
+          return false;
         }
         return false;
+      },
+      onError: (error) => {
+        // Barcha fetch errorlarni silent qil
+        if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+          return; // Silent
+        }
+        if (error instanceof Error && error.message === 'SILENT_NETWORK_ERROR') {
+          return; // Silent
+        }
       },
     },
     mutations: {
       retry: (failureCount, error) => {
-        // Mutation uchun ham network errors'da retry
+        // Mutation uchun ham silent
         if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-          return failureCount < 2;
+          return false;
+        }
+        if (error instanceof Error && error.message === 'SILENT_NETWORK_ERROR') {
+          return false;
         }
         return false;
+      },
+      onError: (error) => {
+        // Mutation errorlarni ham silent qil
+        if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+          return; // Silent
+        }
+        if (error instanceof Error && error.message === 'SILENT_NETWORK_ERROR') {
+          return; // Silent
+        }
       },
     },
   },

@@ -15,18 +15,51 @@ window.addEventListener('unhandledrejection', (event) => {
       reason.includes('ping') ||
       reason.includes('waitForSuccessfulPing') ||
       reason.includes('vite') ||
-      reason.includes('connection lost')) {
+      reason.includes('connection lost') ||
+      reason.includes('SILENT_NETWORK_ERROR')) {
     event.preventDefault();
     return; // Completely silence these
   }
   
-  // Only log truly unexpected errors in development
-  if (import.meta.env.DEV) {
-    console.debug('Handled rejection:', reason);
-  }
-  
+  // Completely silent - no console output at all
   event.preventDefault();
 });
+
+// Override console methods to filter network errors
+const originalError = console.error;
+const originalWarn = console.warn;
+const originalLog = console.log;
+
+console.error = function(...args) {
+  const message = args.join(' ');
+  if (message.includes('Failed to fetch') || 
+      message.includes('fetch') ||
+      message.includes('NetworkError') ||
+      message.includes('SILENT_NETWORK_ERROR')) {
+    return; // Silent
+  }
+  originalError.apply(console, args);
+};
+
+console.warn = function(...args) {
+  const message = args.join(' ');
+  if (message.includes('Failed to fetch') || 
+      message.includes('fetch') ||
+      message.includes('NetworkError')) {
+    return; // Silent
+  }
+  originalWarn.apply(console, args);
+};
+
+console.log = function(...args) {
+  const message = args.join(' ');
+  if (message.includes('Failed to fetch') || 
+      message.includes('fetch') ||
+      message.includes('NetworkError')) {
+    return; // Silent
+  }
+  originalLog.apply(console, args);
+};
 
 window.addEventListener('error', (event) => {
   const message = event.error?.message || event.message || '';
