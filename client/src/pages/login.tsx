@@ -263,20 +263,7 @@ export default function Login() {
                         <Input
                           type="date"
                           placeholder="dd/mm/yyyy"
-                          value={field.value || ''}
-                          onChange={(e) => {
-                            const selectedDate = e.target.value;
-                            console.log('🗓️ Date selected from picker:', selectedDate);
-                            field.onChange(selectedDate);
-                            
-                            // Force re-render to show selected value
-                            if (selectedDate) {
-                              e.target.setAttribute('data-value', selectedDate);
-                            }
-                          }}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
+                          {...field}
                           data-testid="input-birth-date"
                           className="h-12 text-base cursor-pointer"
                           max={new Date().toISOString().split('T')[0]} // Past dates only
