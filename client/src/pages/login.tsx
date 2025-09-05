@@ -308,39 +308,11 @@ export default function Login() {
                       <FormControl>
                         <Input
                           type="text"
-                          placeholder="DD/MM/YYYY (masalan: 15/01/1990)"
-                          value={field.value || ''}
-                          onChange={(e) => {
-                            let value = e.target.value;
-                            
-                            // Faqat raqam va / belgilarini qoldirish
-                            value = value.replace(/[^\d/]/g, '');
-                            
-                            // Raqamlarni ajratib olish
-                            const digits = value.replace(/\D/g, '');
-                            
-                            // Maksimal 8 ta raqam
-                            if (digits.length <= 8) {
-                              let formatted = digits;
-                              
-                              // Avtomatik formatlash
-                              if (digits.length >= 3) {
-                                formatted = digits.slice(0, 2) + '/' + digits.slice(2);
-                              }
-                              if (digits.length >= 5) {
-                                formatted = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
-                              }
-                              
-                              field.onChange(formatted);
-                            }
-                          }}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
+                          placeholder="Tug'ilgan sanangizni kiriting"
+                          {...field}
                           data-testid="input-birth-date"
                           className="h-12 text-base"
                           autoComplete="bday"
-                          maxLength={10}
                         />
                       </FormControl>
                       <FormMessage />
