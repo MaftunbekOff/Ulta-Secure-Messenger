@@ -308,7 +308,7 @@ export default function Login() {
                       <FormControl>
                         <Input
                           type="text"
-                          placeholder="MM/DD/YYYY"
+                          placeholder="DD/MM/YYYY"
                           value={field.value || ''}
                           onChange={(e) => {
                             let inputValue = e.target.value;
@@ -318,13 +318,13 @@ export default function Login() {
                             let digitsOnly = inputValue.replace(/\D/g, '');
                             console.log('🗓️ Digits only:', digitsOnly);
                             
-                            // Format as MM/DD/YYYY
+                            // Format as DD/MM/YYYY
                             let formattedValue = '';
                             if (digitsOnly.length > 0) {
-                              // Add month (MM)
+                              // Add day (DD)
                               formattedValue = digitsOnly.slice(0, 2);
                               if (digitsOnly.length > 2) {
-                                // Add day (DD)
+                                // Add month (MM)
                                 formattedValue += '/' + digitsOnly.slice(2, 4);
                                 if (digitsOnly.length > 4) {
                                   // Add year (YYYY)
