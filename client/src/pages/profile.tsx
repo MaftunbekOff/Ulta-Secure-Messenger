@@ -468,6 +468,28 @@ export default function Profile() {
     },
   });
 
+  // Update form when user data changes
+  useEffect(() => {
+    if (user) {
+      profileForm.reset({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+        phoneNumber: user.phoneNumber || "",
+        displayUsername: user.displayUsername || "",
+        profileImageUrl: user.profileImageUrl || "",
+      });
+      
+      // Update selected country code from phone number
+      if (user.phoneNumber) {
+        const userCode = countryCodes.find(country => user.phoneNumber?.startsWith(country.code));
+        if (userCode) {
+          setSelectedCountryCode(userCode.code);
+        }
+      }
+    }
+  }, [user, profileForm]);
+
   const handleProfileUpdate = (data: UpdateProfileData) => {
     updateProfileMutation.mutate(data);
   };
