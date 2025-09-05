@@ -139,10 +139,10 @@ export const updateProfileSchema = z.object({
   firstName: z.string().min(1, "First name is required").max(100),
   lastName: z.string().min(1, "Last name is required").max(100),
   email: z.string().email("Invalid email address"),
-  phoneNumber: z.string().min(1, "Phone number is required").max(20),
+  phoneNumber: z.string().max(20).optional().or(z.literal("")),
   displayUsername: z.string().min(3).max(50).regex(/^@[a-zA-Z][a-zA-Z0-9_]*$/, {
     message: "Username must start with @ followed by letters, numbers, and underscores"
-  }).optional(),
+  }).optional().or(z.literal("")),
   profileImageUrl: z.string().url("Invalid image URL").optional().or(z.literal("")),
 });
 

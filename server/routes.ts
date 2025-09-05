@@ -4,12 +4,31 @@ import { WebSocketServer, WebSocket } from "ws";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import multer from "multer";
+import path from "path";
+import fs from "fs/promises";
 import { storage } from "./storage";
 import { loginSchema, registerSchema, insertMessageSchema, updateProfileSchema, changePasswordSchema } from "@shared/schema";
 import { generateKeyPair, encrypt as militaryEncrypt, decrypt as militaryDecrypt } from "./militaryEncryption";
 import { parse } from "url";
 
 const JWT_SECRET = process.env.JWT_SECRET || "ultrasecure-messenger-jwt-secret-2024";
+
+// Multer configuration for avatar uploads
+const avatarStorage = multer.memoryStorage();
+const avatarUpload = multer({
+  storage: avatarStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 interface AuthenticatedRequest extends Request {
   userId?: string;
@@ -327,6 +346,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Password changed successfully" });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Failed to change password" });
+    }
+  });
+
+  // Avatar upload endpoint
+  app.post('/api/profile/avatar', authenticate, avatarUpload.single('avatar'), async (req: AuthenticatedRequest, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomId = crypto.randomBytes(8).toString('hex');
+      const fileExtension = path.extname(req.file.originalname) || '.jpg';
+      const fileName = `avatar_${timestamp}_${randomId}${fileExtension}`;
+      
+      // Create uploads directory if it doesn't exist
+      const uploadsDir = path.join(process.cwd(), 'client', 'public', 'uploads', 'avatars');
+      await fs.mkdir(uploadsDir, { recursive: true });
+      
+      // Save file to uploads directory
+      const filePath = path.join(uploadsDir, fileName);
+      await fs.writeFile(filePath, req.file.buffer);
+      
+      // Create public URL for the image
+      const profileImageUrl = `/uploads/avatars/${fileName}`;
+      
+      // Update user's profile image URL in database
+      const updatedUser = await storage.updateUserProfile(req.userId!, {
+        profileImageUrl
+      });
+
+      res.json({
+        message: "Avatar uploaded successfully",
+        profileImageUrl,
+        user: {
+          id: updatedUser.id,
+          username: updatedUser.username,
+          email: updatedUser.email,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          birthDate: updatedUser.birthDate,
+          phoneNumber: updatedUser.phoneNumber,
+          displayUsername: updatedUser.displayUsername,
+          profileImageUrl: updatedUser.profileImageUrl,
+          isOnline: updatedUser.isOnline,
+        }
+      });
+    } catch (error: any) {
+      console.error('Avatar upload error:', error);
+      res.status(500).json({ message: error.message || "Failed to upload avatar" });
     }
   });
 

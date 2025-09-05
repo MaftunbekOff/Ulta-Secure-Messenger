@@ -283,15 +283,48 @@ export default function Profile() {
         type: 'image/jpeg'
       });
       
+      // Create URL for preview
+      const previewUrl = URL.createObjectURL(croppedBlob);
+      
       // Update states
       setSelectedImage(croppedFile);
-      setImagePreview(URL.createObjectURL(croppedBlob));
+      setImagePreview(previewUrl);
       setIsEditingImage(false);
       
-      toast({
-        title: "Rasm tayyorlandi",
-        description: "Avatar uchun rasm muvaffaqiyatli tayyorlandi"
-      });
+      // Upload image to server immediately and update user avatar
+      try {
+        const formData = new FormData();
+        formData.append('avatar', croppedFile);
+        
+        const response = await fetch('/api/profile/avatar', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: formData
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Update profile form with new avatar URL
+          profileForm.setValue('profileImageUrl', data.profileImageUrl);
+          
+          // Refresh user data to show new avatar everywhere
+          await refreshUser();
+          
+          toast({
+            title: "Avatar yangilandi! ✅",
+            description: "Rasm muvaffaqiyatli yuklandi va profil avatari yangilandi"
+          });
+        } else {
+          throw new Error('Upload failed');
+        }
+      } catch (uploadError) {
+        console.error('Avatar upload failed:', uploadError);
+        toast({
+          title: "Rasm tayyorlandi",
+          description: "Avatar tahrirlandi, endi 'Update Profile' tugmasini bosing"
+        });
+      }
     } catch (error) {
       toast({
         variant: "destructive",
@@ -744,7 +777,7 @@ export default function Profile() {
 
                     <Button
                       type="submit"
-                      disabled={updateProfileMutation.isPending || !!usernameValidationMessage}
+                      disabled={updateProfileMutation.isPending}
                       data-testid="button-update-profile"
                       className="h-12 text-base"
                     >
