@@ -201,12 +201,22 @@ export default function ChatWindow({
     }
 
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('No authentication token found, using WebSocket only');
+        // Fallback to WebSocket only
+        if (isConnected && sendMessage && typeof sendMessage === 'function') {
+          sendMessage(content);
+        }
+        return;
+      }
+
       // Send message via API (saves to database)
       const response = await fetch(`/api/chats/${chatId}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           content: content,
@@ -225,8 +235,16 @@ export default function ChatWindow({
         if (isConnected && sendMessage && typeof sendMessage === 'function') {
           sendMessage(content);
         }
+      } else if (response.status === 401) {
+        console.warn('Authentication failed - token expired or invalid');
+        console.log('🚨 Please log in again to save messages to database');
+        
+        // Fallback to WebSocket only for now
+        if (isConnected && sendMessage && typeof sendMessage === 'function') {
+          sendMessage(content);
+        }
       } else {
-        console.error('Failed to send message via API');
+        console.error(`Failed to send message via API: ${response.status}`);
         
         // Fallback to WebSocket only if API fails
         if (isConnected && sendMessage && typeof sendMessage === 'function') {
