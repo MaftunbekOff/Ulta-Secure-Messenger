@@ -318,7 +318,7 @@ export default function ChatWindow({
           content: msg.content,
           encrypted: msg.encrypted,
           originalContent: msg.content,
-          encryptedContent: msg.encrypted ? `🔒 ENCRYPTED_${msg.id}_${btoa(msg.content).substring(0, 20)}...` : undefined
+          encryptedContent: msg.encrypted ? `🔒 ENCRYPTED_${msg.id}_${encodeURIComponent(msg.content).substring(0, 20)}...` : undefined
         }))}
         connectionStatus={connectionStatus}
         isConnected={isConnected}

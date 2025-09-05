@@ -124,34 +124,19 @@ export function useWebSocket() {
       ws.current.onclose = (event) => {
         console.log('WebSocket ulanish yopildi:', event.code, event.reason);
         setConnected(false);
-        setConnectionStatus('disconnected');
-        
-        // Auto-reconnect if connection was established before
-        if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
-          setTimeout(() => {
-            setReconnectAttempts(prev => prev + 1);
-            connectWebSocket();
-          }, 2000);
-        }
         setIsConnecting(false);
         setConnectionStatus('disconnected');
-
-        // Faqat development muhitida log qilish
-        if (process.env.NODE_ENV === 'development') {
-          console.log('WebSocket ulanish yopildi:', event.code, event.reason);
-        }
-
-        // Qayta ulanishga harakat qilish (faqat kutilmagan yopilishda)
-        if (!event.wasClean && reconnectAttempts < maxReconnectAttempts) {
+        
+        // Auto-reconnect logic (only for unexpected disconnections)
+        if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
           const timeout = Math.min(Math.pow(2, reconnectAttempts) * 1000, 30000); // Max 30s
           setReconnectAttempts(prev => prev + 1);
-
+          
           reconnectTimeoutRef.current = setTimeout(() => {
             connectWebSocket();
           }, timeout);
         } else if (reconnectAttempts >= maxReconnectAttempts) {
-          setError('HTTP polling rejimida ishlayabdi');
-          // HTTP polling rejimiga o'tish - console spam yo'q
+          setError('Connection failed after multiple attempts');
         }
       };
 
