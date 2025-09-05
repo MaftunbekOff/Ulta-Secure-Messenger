@@ -74,16 +74,7 @@ export default function Profile() {
   const { user, refreshUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  // Initialize country code from user's existing phone number
-  const initializeCountryCode = () => {
-    if (user?.phoneNumber) {
-      const userCode = countryCodes.find(country => user.phoneNumber?.startsWith(country.code));
-      return userCode ? userCode.code : "+998";
-    }
-    return "+998";
-  };
-  
-  const [selectedCountryCode, setSelectedCountryCode] = useState(initializeCountryCode);
+  const [selectedCountryCode, setSelectedCountryCode] = useState("+998");
   const [usernameValidationMessage, setUsernameValidationMessage] = useState("");
   const [usernameAvailabilityMessage, setUsernameAvailabilityMessage] = useState("");
   const [phoneValidationMessage, setPhoneValidationMessage] = useState("");
@@ -725,13 +716,20 @@ export default function Profile() {
 
       // Parse phone number and set country code
       if (user.phoneNumber) {
-        // Extract country code from phone number
-        for (const country of countryCodes) {
+        // Extract country code from phone number - longest match first
+        const sortedCodes = countryCodes
+          .filter(country => !country.hidden)
+          .sort((a, b) => b.code.length - a.code.length); // Longer codes first to avoid conflicts
+        
+        for (const country of sortedCodes) {
           if (user.phoneNumber.startsWith(country.code)) {
             setSelectedCountryCode(country.code);
             break;
           }
         }
+      } else {
+        // Default to Uzbekistan if no phone number
+        setSelectedCountryCode("+998");
       }
     }
   }, [user, profileForm]);
@@ -1026,7 +1024,7 @@ export default function Profile() {
                                   }}
                                 >
                                   <SelectTrigger className="w-40 h-12">
-                                    <SelectValue />
+                                    <SelectValue placeholder="🌍 Country" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {countryCodes.filter(country => !country.hidden).map((country) => (
