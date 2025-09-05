@@ -226,14 +226,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }, 2000); // 2 second timeout
 
     try {
-      // Ultra-fast response headers
-      res.set({
-        'Cache-Control': 'private, max-age=300', // 5 minute cache
-        'X-Content-Type-Options': 'nosniff',
-        'Content-Type': 'application/json',
-        'Connection': 'keep-alive'
-      });
-
       const user = await storage.getUser(req.userId!);
       const responseTime = Date.now() - startTime;
       
@@ -254,8 +246,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isOnline: user.isOnline,
       };
 
-      // Performance headers
+      // Set all headers at once
       res.set({
+        'Cache-Control': 'private, max-age=300',
+        'X-Content-Type-Options': 'nosniff',
+        'Content-Type': 'application/json',
+        'Connection': 'keep-alive',
         'X-Response-Time': `${responseTime}ms`,
         'X-Performance': responseTime < 50 ? 'ULTRA_FAST' : responseTime < 200 ? 'FAST' : 'SLOW'
       });
@@ -265,7 +261,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       clearTimeout(timeout);
       const responseTime = Date.now() - startTime;
       console.error(`Auth me error (${responseTime}ms):`, error);
-      res.status(500).json({ message: "Failed to fetch user" });
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Failed to fetch user" });
+      }
     }
   });
 
