@@ -38,7 +38,7 @@ const countryCodes = [
   { id: "tm", code: "+993", country: "🇹🇲 Turkmaniston", flag: "🇹🇲" },
   { id: "kz", code: "+77", country: "🇰🇿 Qozog'iston", flag: "🇰🇿" },
   // Additional major countries  
-  { id: "ca", code: "+1", country: "🇨🇦 Canada", flag: "🇨🇦" },
+  { id: "ca", code: "+1", country: "🇨🇦 Canada", flag: "🇨🇦", hidden: true }, // Same as US, hide to avoid duplicate
   { id: "au", code: "+61", country: "🇦🇺 Australia", flag: "🇦🇺" },
   { id: "br", code: "+55", country: "🇧🇷 Brazil", flag: "🇧🇷" },
   { id: "mx", code: "+52", country: "🇲🇽 Mexico", flag: "🇲🇽" },
@@ -1004,7 +1004,7 @@ export default function Profile() {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {countryCodes.map((country) => (
+                                    {countryCodes.filter(country => !country.hidden).map((country) => (
                                       <SelectItem key={country.id} value={country.code}>
                                         <div className="flex items-center gap-2">
                                           <span>{country.flag}</span>
