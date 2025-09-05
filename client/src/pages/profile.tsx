@@ -285,7 +285,10 @@ export default function Profile() {
               <CardContent className="space-y-6">
                 {/* Profile Picture Section */}
                 <div className="flex items-center space-x-6">
-                  <Avatar className="h-24 w-24">
+                  <Avatar 
+                    className="h-24 w-24 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
                     <AvatarImage src={user?.profileImageUrl || undefined} />
                     <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
                       {user?.username?.charAt(0).toUpperCase() || "U"}
@@ -553,7 +556,10 @@ export default function Profile() {
                       
                       {/* Image Preview */}
                       <div className="flex items-center space-x-4">
-                        <Avatar className="h-20 w-20">
+                        <Avatar 
+                          className="h-20 w-20 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
                           <AvatarImage src={imagePreview || user?.profileImageUrl || undefined} />
                           <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
                             {user?.username?.charAt(0).toUpperCase() || "U"}
