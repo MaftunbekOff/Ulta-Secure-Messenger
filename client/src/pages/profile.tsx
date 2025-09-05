@@ -723,39 +723,33 @@ export default function Profile() {
   // Sync form with user data and parse phone number
   useEffect(() => {
     if (user) {
-      profileForm.reset({
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
-        email: user.email || "",
-        phoneNumber: user.phoneNumber || "",
-        displayUsername: user.displayUsername || "",
-        profileImageUrl: user.profileImageUrl || "",
-      });
-
-      // Parse phone number and set country code
+      // Parse phone number and set country code first
+      let detectedCountryCode = "+998"; // default
       if (user.phoneNumber) {
         // Extract country code from phone number - longest match first
         const sortedCodes = countryCodes
           .filter(country => !country.hidden)
-          .sort((a, b) => b.code.length - a.code.length); // Longer codes first to avoid conflicts
+          .sort((a, b) => b.code.length - a.code.length);
         
-        let foundCountry = false;
         for (const country of sortedCodes) {
           if (user.phoneNumber.startsWith(country.code)) {
-            setSelectedCountryCode(country.code);
-            foundCountry = true;
+            detectedCountryCode = country.code;
             break;
           }
         }
-        
-        // If no country code found, default to +998
-        if (!foundCountry) {
-          setSelectedCountryCode("+998");
-        }
-      } else {
-        // Default to Uzbekistan if no phone number
-        setSelectedCountryCode("+998");
       }
+      
+      setSelectedCountryCode(detectedCountryCode);
+      
+      // Reset form with user data
+      profileForm.reset({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+        phoneNumber: user.phoneNumber || detectedCountryCode,
+        displayUsername: user.displayUsername || "",
+        profileImageUrl: user.profileImageUrl || "",
+      });
     }
   }, [user, profileForm]);
 
@@ -1298,25 +1292,38 @@ export default function Profile() {
                                     field.onChange(fullNumber);
                                   }}
                                   value={(() => {
-                                    // Agar form value mavjud bo'lsa, uni ishlatamiz
-                                    if (field.value && field.value !== selectedCountryCode) {
+                                    // Priority 1: Use form value if it exists and is different from country code
+                                    if (field.value && field.value !== selectedCountryCode && field.value.trim() !== '') {
                                       const phoneOnly = field.value.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}\\s*`), '').trim();
                                       return phoneOnly;
                                     }
                                     
-                                    // Agar user ning telefon raqami mavjud bo'lsa va selected country code bilan mos kelsa
-                                    if (user?.phoneNumber && user.phoneNumber.startsWith(selectedCountryCode)) {
-                                      const phoneOnly = user.phoneNumber.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}\\s*`), '').trim();
-                                      
-                                      // Form value ni ham yangilaymiz
-                                      if (!field.value || field.value === selectedCountryCode) {
-                                        setTimeout(() => field.onChange(user.phoneNumber), 0);
+                                    // Priority 2: Use database phone number if available
+                                    if (user?.phoneNumber && user.phoneNumber.trim() !== '' && user.phoneNumber !== selectedCountryCode) {
+                                      // Check if user's phone starts with current selected country code
+                                      if (user.phoneNumber.startsWith(selectedCountryCode)) {
+                                        const phoneOnly = user.phoneNumber.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}\\s*`), '').trim();
+                                        
+                                        // Auto-sync form with database value if form is empty or just has country code
+                                        if (!field.value || field.value === selectedCountryCode) {
+                                          setTimeout(() => field.onChange(user.phoneNumber), 0);
+                                        }
+                                        
+                                        return phoneOnly;
+                                      } else {
+                                        // If database phone has different country code, show it as is
+                                        // This handles cases where country code was changed but phone wasn't updated
+                                        const phoneWithoutAnyCode = user.phoneNumber.replace(/^\+\d{1,4}\s*/, '').trim();
+                                        
+                                        // Update form to match current country code selection
+                                        const newFullNumber = phoneWithoutAnyCode ? `${selectedCountryCode} ${phoneWithoutAnyCode}` : selectedCountryCode;
+                                        setTimeout(() => field.onChange(newFullNumber), 0);
+                                        
+                                        return phoneWithoutAnyCode;
                                       }
-                                      
-                                      return phoneOnly;
                                     }
                                     
-                                    // Aks holda bo'sh string qaytaramiz
+                                    // Priority 3: Empty state
                                     return '';
                                   })()}
                                 />
