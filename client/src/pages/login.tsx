@@ -299,25 +299,7 @@ export default function Login() {
                   />
                 </div>
 
-                <FormField
-                  control={registerForm.control}
-                  name="birthDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tug'ilgan sana</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="text"
-                          placeholder="Tug'ilgan sanangizni kiriting"
-                          {...field}
-                          data-testid="input-birth-date"
-                          className="h-12 text-base"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                
 
                 <FormField
                   control={registerForm.control}
