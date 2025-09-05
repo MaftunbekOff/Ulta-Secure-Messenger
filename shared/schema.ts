@@ -139,11 +139,14 @@ export const updateProfileSchema = z.object({
   firstName: z.string().min(1, "First name is required").max(100),
   lastName: z.string().min(1, "Last name is required").max(100),
   email: z.string().email("Invalid email address"),
-  phoneNumber: z.string().max(20).optional().or(z.literal("")),
-  displayUsername: z.string().max(50).regex(/^(@[a-zA-Z][a-zA-Z0-9_]*)?$/, {
+  phoneNumber: z.string().max(20).optional().or(z.literal("")).or(z.undefined()),
+  displayUsername: z.string().optional().or(z.literal("")).or(z.undefined()).refine((val) => {
+    if (!val || val === "") return true; // Empty values are allowed
+    return /^@[a-zA-Z][a-zA-Z0-9_]*$/.test(val);
+  }, {
     message: "Username must start with @ followed by letters, numbers, and underscores"
-  }).optional().or(z.literal("")),
-  profileImageUrl: z.string().optional().or(z.literal("")),
+  }),
+  profileImageUrl: z.string().optional().or(z.literal("")).or(z.undefined()),
 });
 
 export const changePasswordSchema = z.object({

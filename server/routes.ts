@@ -292,7 +292,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Profile routes
   app.put('/api/profile', authenticate, async (req: AuthenticatedRequest, res) => {
     try {
-      console.log('Profile update request body:', JSON.stringify(req.body, null, 2));
       const validatedData = updateProfileSchema.parse(req.body);
 
       // Check if email is taken by another user
