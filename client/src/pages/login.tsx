@@ -335,9 +335,7 @@ export default function Login() {
                       </div>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    🖥️ Desktop va 📱 Mobile-da ishlaydi
-                  </p>
+                  
                 </div>
 
 
