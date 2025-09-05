@@ -309,7 +309,7 @@ export default function Login() {
                         <Input
                           type="text"
                           placeholder="DD/MM/YYYY (masalan: 15/01/1990)"
-                          {...field}
+                          value={field.value || ''}
                           onChange={(e) => {
                             let value = e.target.value;
                             
@@ -334,6 +334,9 @@ export default function Login() {
                               field.onChange(formatted);
                             }
                           }}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
                           data-testid="input-birth-date"
                           className="h-12 text-base"
                           autoComplete="bday"
