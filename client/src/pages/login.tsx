@@ -132,12 +132,16 @@ export default function Login() {
                       <FormLabel>Email</FormLabel>
                       <FormControl>
                         <Input
-                            type="email"
-                            placeholder="sizning@emailingiz.uz"
-                            {...field}
-                            data-testid="input-email"
-                            className="h-12 text-base"
-                          />
+                          type="email"
+                          placeholder="sizning@emailingiz.uz"
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          data-testid="input-email"
+                          className="h-12 text-base"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
