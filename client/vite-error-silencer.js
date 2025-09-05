@@ -5,59 +5,46 @@
   const originalWarn = console.warn;
   const originalLog = console.log;
 
-  function isNetworkError(message) {
-    const networkKeywords = [
-      'Failed to fetch', 'failed to fetch', 'FAILED TO FETCH',
-      'fetch', 'FETCH', 'Fetch',
-      'ping', 'PING', 'Ping',
-      'vite', 'VITE', 'Vite',
-      'connection lost', 'CONNECTION LOST', 'Connection Lost',
-      'NetworkError', 'NETWORKERROR', 'network error',
-      'waitForSuccessfulPing', 'wait for successful ping',
-      'ERR_NETWORK', 'ERR_INTERNET_DISCONNECTED',
-      'net::ERR_', 'Connection failed', 'connection failed',
-      'SILENT_NETWORK_ERROR', 'silent network error'
-    ];
-    
-    return networkKeywords.some(keyword => message.includes(keyword));
+  function isFailedToFetchError(message) {
+    return message.toLowerCase().includes('failed to fetch');
   }
 
   console.error = function(...args) {
     const message = args.join(' ');
-    if (isNetworkError(message)) {
-      return; // Completely silent
+    if (isFailedToFetchError(message)) {
+      return; // Block only Failed to fetch
     }
     originalError.apply(console, args);
   };
 
   console.warn = function(...args) {
     const message = args.join(' ');
-    if (isNetworkError(message)) {
-      return; // Completely silent
+    if (isFailedToFetchError(message)) {
+      return; // Block only Failed to fetch
     }
     originalWarn.apply(console, args);
   };
 
   console.log = function(...args) {
     const message = args.join(' ');
-    if (isNetworkError(message)) {
-      return; // Completely silent
+    if (isFailedToFetchError(message)) {
+      return; // Block only Failed to fetch
     }
     originalLog.apply(console, args);
   };
 
   console.info = function(...args) {
     const message = args.join(' ');
-    if (isNetworkError(message)) {
-      return; // Completely silent
+    if (isFailedToFetchError(message)) {
+      return; // Block only Failed to fetch
     }
     originalLog.apply(console, args);
   };
 
   console.debug = function(...args) {
     const message = args.join(' ');
-    if (isNetworkError(message)) {
-      return; // Completely silent
+    if (isFailedToFetchError(message)) {
+      return; // Block only Failed to fetch
     }
     originalLog.apply(console, args);
   };

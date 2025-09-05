@@ -17,42 +17,35 @@ const originalLog = console.log;
 const originalInfo = console.info;
 const originalDebug = console.debug;
 
-// Function to check if message contains ANY fetch-related keyword
-function containsFetchKeywords(message) {
+// Function to check specifically for "Failed to fetch" messages
+function isFailedToFetchMessage(message) {
   const str = String(message).toLowerCase();
-  const keywords = [
-    'failed to fetch', 'fetch', 'networkerror', 'network error',
-    'err_network', 'err_internet_disconnected', 'net::err_',
-    'connection failed', 'connection error', 'silent_network_error',
-    'ping', 'vite', 'hmr', 'websocket', 'ws://', 'wss://'
-  ];
-  
-  return keywords.some(keyword => str.includes(keyword));
+  return str.includes('failed to fetch');
 }
 
-// Override ALL console methods to completely block fetch errors
+// Override console methods to block only "Failed to fetch" messages
 console.error = function(...args) {
-  if (args.some(arg => containsFetchKeywords(arg))) return;
+  if (args.some(arg => isFailedToFetchMessage(arg))) return;
   originalError.apply(console, args);
 };
 
 console.warn = function(...args) {
-  if (args.some(arg => containsFetchKeywords(arg))) return;
+  if (args.some(arg => isFailedToFetchMessage(arg))) return;
   originalWarn.apply(console, args);
 };
 
 console.log = function(...args) {
-  if (args.some(arg => containsFetchKeywords(arg))) return;
+  if (args.some(arg => isFailedToFetchMessage(arg))) return;
   originalLog.apply(console, args);
 };
 
 console.info = function(...args) {
-  if (args.some(arg => containsFetchKeywords(arg))) return;
+  if (args.some(arg => isFailedToFetchMessage(arg))) return;
   originalInfo.apply(console, args);
 };
 
 console.debug = function(...args) {
-  if (args.some(arg => containsFetchKeywords(arg))) return;
+  if (args.some(arg => isFailedToFetchMessage(arg))) return;
   originalDebug.apply(console, args);
 };
 
