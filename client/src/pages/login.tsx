@@ -311,23 +311,26 @@ export default function Login() {
                           placeholder="MM/DD/YYYY"
                           value={field.value || ''}
                           onChange={(e) => {
-                            const inputValue = e.target.value;
+                            let inputValue = e.target.value;
                             console.log('🗓️ Manual date input:', inputValue);
                             
-                            // Allow only numbers and forward slashes
-                            let formattedValue = inputValue.replace(/[^\d/]/g, '');
+                            // Remove all non-digit characters first
+                            let digitsOnly = inputValue.replace(/\D/g, '');
+                            console.log('🗓️ Digits only:', digitsOnly);
                             
-                            // Auto-format as MM/DD/YYYY
-                            if (formattedValue.length >= 2 && formattedValue[2] !== '/') {
-                              formattedValue = formattedValue.slice(0, 2) + '/' + formattedValue.slice(2);
-                            }
-                            if (formattedValue.length >= 5 && formattedValue[5] !== '/') {
-                              formattedValue = formattedValue.slice(0, 5) + '/' + formattedValue.slice(5);
-                            }
-                            
-                            // Limit to MM/DD/YYYY format (10 characters)
-                            if (formattedValue.length > 10) {
-                              formattedValue = formattedValue.slice(0, 10);
+                            // Format as MM/DD/YYYY
+                            let formattedValue = '';
+                            if (digitsOnly.length > 0) {
+                              // Add month (MM)
+                              formattedValue = digitsOnly.slice(0, 2);
+                              if (digitsOnly.length > 2) {
+                                // Add day (DD)
+                                formattedValue += '/' + digitsOnly.slice(2, 4);
+                                if (digitsOnly.length > 4) {
+                                  // Add year (YYYY)
+                                  formattedValue += '/' + digitsOnly.slice(4, 8);
+                                }
+                              }
                             }
                             
                             console.log('🗓️ Formatted date:', formattedValue);
