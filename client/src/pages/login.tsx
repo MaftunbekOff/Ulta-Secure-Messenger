@@ -299,7 +299,25 @@ export default function Login() {
                   />
                 </div>
 
-                
+                <FormField
+                  control={registerForm.control}
+                  name="birthDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>📅 Date of Birth</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder="MM-DD-YYYY (e.g., 01-15-1990)"
+                          {...field}
+                          data-testid="input-birth-date"
+                          className="h-12 text-base"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={registerForm.control}
