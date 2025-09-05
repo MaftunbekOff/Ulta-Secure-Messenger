@@ -20,6 +20,15 @@ const activeChat = {
   members: [],
   avatar: "https://github.com/shadcn.png",
   status: "Online",
+  otherUser: {
+    id: "user2",
+    username: "johndoe",
+    firstName: "John",
+    lastName: "Doe",
+    profileImageUrl: "https://github.com/shadcn.png",
+    isOnline: true,
+    lastSeen: new Date(Date.now() - 5 * 60 * 1000) // 5 minutes ago
+  }
 };
 
 const getChatDisplayData = (chat: any) => {

@@ -30,6 +30,7 @@ interface ChatWindowProps {
       lastName?: string;
       profileImageUrl?: string;
       isOnline?: boolean;
+      lastSeen?: Date;
     };
   };
   onBack?: () => void;
@@ -102,7 +103,10 @@ export default function ChatWindow({
     }
     
     if (selectedChat.otherUser) {
-      const { firstName, username } = selectedChat.otherUser;
+      const { firstName, lastName, username } = selectedChat.otherUser;
+      if (firstName && lastName) {
+        return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
+      }
       if (firstName) {
         return firstName.charAt(0).toUpperCase();
       }
@@ -112,6 +116,36 @@ export default function ChatWindow({
     }
     
     return 'U';
+  };
+
+  const getLastActivity = () => {
+    if (!selectedChat || selectedChat.isGroup || !selectedChat.otherUser) return '';
+    
+    const { isOnline, lastSeen } = selectedChat.otherUser;
+    
+    if (isOnline) {
+      return 'Hozir onlayn';
+    }
+    
+    if (lastSeen) {
+      const now = new Date();
+      const lastSeenDate = new Date(lastSeen);
+      const diffInMinutes = Math.floor((now.getTime() - lastSeenDate.getTime()) / (1000 * 60));
+      
+      if (diffInMinutes < 1) {
+        return 'Hozirgina onlayn edi';
+      } else if (diffInMinutes < 60) {
+        return `${diffInMinutes} daqiqa oldin ko'rilgan`;
+      } else if (diffInMinutes < 1440) { // 24 hours
+        const hours = Math.floor(diffInMinutes / 60);
+        return `${hours} soat oldin ko'rilgan`;
+      } else {
+        const days = Math.floor(diffInMinutes / 1440);
+        return `${days} kun oldin ko'rilgan`;
+      }
+    }
+    
+    return 'Oxirgi faollik noma\'lum';
   };
 
   // Handle incoming messages
@@ -216,9 +250,14 @@ export default function ChatWindow({
                   {getChatDisplayName()}
                 </span>
                 {selectedChat && !selectedChat.isGroup && selectedChat.otherUser && (
-                  <span className="text-xs text-muted-foreground">
-                    @{selectedChat.otherUser.username}
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground">
+                      @{selectedChat.otherUser.username}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {getLastActivity()}
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
