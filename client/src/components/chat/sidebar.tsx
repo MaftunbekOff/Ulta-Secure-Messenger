@@ -381,7 +381,7 @@ export default function Sidebar({ selectedChatId, onSelectChat, isMobile = false
       
       // Check if otherUser exists and has proper data
       if (!chat.otherUser) {
-        return "Loading...";
+        return "Unknown User";
       }
       
       // Try to get full name first
@@ -670,7 +670,7 @@ export default function Sidebar({ selectedChatId, onSelectChat, isMobile = false
 
             // Get preview from the cached state
             const messagePreview = lastMessage?.content 
-              ? (decryptedPreviews[chat.id] || "Loading...")
+              ? (decryptedPreviews[chat.id] || "🔒 Decrypting...")
               : "No messages yet";
 
             return (
