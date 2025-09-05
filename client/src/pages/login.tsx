@@ -262,25 +262,29 @@ export default function Login() {
                       <FormControl>
                         <Input
                           type="date"
-                          placeholder="YYYY-MM-DD"
-                          value={field.value ?? ''}
+                          placeholder="dd/mm/yyyy"
+                          value={field.value || ''}
                           onChange={(e) => {
-                            const dateValue = e.target.value;
-                            console.log('🗓️ Date input changed:', dateValue);
-                            field.onChange(dateValue);
+                            const selectedDate = e.target.value;
+                            console.log('🗓️ Date selected from picker:', selectedDate);
+                            field.onChange(selectedDate);
+                            
+                            // Force re-render to show selected value
+                            if (selectedDate) {
+                              e.target.setAttribute('data-value', selectedDate);
+                            }
                           }}
                           onBlur={field.onBlur}
                           name={field.name}
                           ref={field.ref}
                           data-testid="input-birth-date"
-                          className="h-12 text-base"
+                          className="h-12 text-base cursor-pointer"
                           max={new Date().toISOString().split('T')[0]} // Past dates only
                           min="1900-01-01" // Minimum realistic birth date
                           style={{ 
-                            colorScheme: 'light',
-                            WebkitAppearance: 'none',
-                            MozAppearance: 'textfield'
+                            colorScheme: 'auto'
                           }}
+                          autoComplete="bday"
                         />
                       </FormControl>
                       <FormMessage />
