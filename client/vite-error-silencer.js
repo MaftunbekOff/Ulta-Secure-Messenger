@@ -5,15 +5,26 @@
   const originalWarn = console.warn;
   const originalLog = console.log;
 
+  function isNetworkError(message) {
+    const networkKeywords = [
+      'Failed to fetch', 'failed to fetch', 'FAILED TO FETCH',
+      'fetch', 'FETCH', 'Fetch',
+      'ping', 'PING', 'Ping',
+      'vite', 'VITE', 'Vite',
+      'connection lost', 'CONNECTION LOST', 'Connection Lost',
+      'NetworkError', 'NETWORKERROR', 'network error',
+      'waitForSuccessfulPing', 'wait for successful ping',
+      'ERR_NETWORK', 'ERR_INTERNET_DISCONNECTED',
+      'net::ERR_', 'Connection failed', 'connection failed',
+      'SILENT_NETWORK_ERROR', 'silent network error'
+    ];
+    
+    return networkKeywords.some(keyword => message.includes(keyword));
+  }
+
   console.error = function(...args) {
     const message = args.join(' ');
-    if (message.includes('Failed to fetch') || 
-        message.includes('fetch') ||
-        message.includes('ping') ||
-        message.includes('vite') ||
-        message.includes('connection lost') ||
-        message.includes('NetworkError') ||
-        message.includes('waitForSuccessfulPing')) {
+    if (isNetworkError(message)) {
       return; // Completely silent
     }
     originalError.apply(console, args);
@@ -21,12 +32,7 @@
 
   console.warn = function(...args) {
     const message = args.join(' ');
-    if (message.includes('Failed to fetch') || 
-        message.includes('fetch') ||
-        message.includes('ping') ||
-        message.includes('vite') ||
-        message.includes('NetworkError') ||
-        message.includes('connection lost')) {
+    if (isNetworkError(message)) {
       return; // Completely silent
     }
     originalWarn.apply(console, args);
@@ -34,9 +40,23 @@
 
   console.log = function(...args) {
     const message = args.join(' ');
-    if (message.includes('Failed to fetch') || 
-        message.includes('fetch') ||
-        message.includes('NetworkError')) {
+    if (isNetworkError(message)) {
+      return; // Completely silent
+    }
+    originalLog.apply(console, args);
+  };
+
+  console.info = function(...args) {
+    const message = args.join(' ');
+    if (isNetworkError(message)) {
+      return; // Completely silent
+    }
+    originalLog.apply(console, args);
+  };
+
+  console.debug = function(...args) {
+    const message = args.join(' ');
+    if (isNetworkError(message)) {
       return; // Completely silent
     }
     originalLog.apply(console, args);

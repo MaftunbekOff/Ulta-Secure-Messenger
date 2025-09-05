@@ -25,40 +25,67 @@ window.addEventListener('unhandledrejection', (event) => {
   event.preventDefault();
 });
 
-// Override console methods to filter network errors
+// Complete console override to block ALL fetch-related messages
 const originalError = console.error;
 const originalWarn = console.warn;
 const originalLog = console.log;
+const originalInfo = console.info;
+const originalDebug = console.debug;
+
+function isFetchError(message) {
+  return message.includes('Failed to fetch') || 
+         message.includes('failed to fetch') ||
+         message.includes('FAILED TO FETCH') ||
+         message.includes('fetch') ||
+         message.includes('NetworkError') ||
+         message.includes('network error') ||
+         message.includes('NETWORK_ERROR') ||
+         message.includes('SILENT_NETWORK_ERROR') ||
+         message.includes('Connection failed') ||
+         message.includes('connection failed') ||
+         message.includes('ERR_NETWORK') ||
+         message.includes('ERR_INTERNET_DISCONNECTED') ||
+         message.includes('net::ERR_');
+}
 
 console.error = function(...args) {
   const message = args.join(' ');
-  if (message.includes('Failed to fetch') || 
-      message.includes('fetch') ||
-      message.includes('NetworkError') ||
-      message.includes('SILENT_NETWORK_ERROR')) {
-    return; // Silent
+  if (isFetchError(message)) {
+    return; // Completely silent
   }
   originalError.apply(console, args);
 };
 
 console.warn = function(...args) {
   const message = args.join(' ');
-  if (message.includes('Failed to fetch') || 
-      message.includes('fetch') ||
-      message.includes('NetworkError')) {
-    return; // Silent
+  if (isFetchError(message)) {
+    return; // Completely silent
   }
   originalWarn.apply(console, args);
 };
 
 console.log = function(...args) {
   const message = args.join(' ');
-  if (message.includes('Failed to fetch') || 
-      message.includes('fetch') ||
-      message.includes('NetworkError')) {
-    return; // Silent
+  if (isFetchError(message)) {
+    return; // Completely silent
   }
   originalLog.apply(console, args);
+};
+
+console.info = function(...args) {
+  const message = args.join(' ');
+  if (isFetchError(message)) {
+    return; // Completely silent
+  }
+  originalInfo.apply(console, args);
+};
+
+console.debug = function(...args) {
+  const message = args.join(' ');
+  if (isFetchError(message)) {
+    return; // Completely silent
+  }
+  originalDebug.apply(console, args);
 };
 
 window.addEventListener('error', (event) => {

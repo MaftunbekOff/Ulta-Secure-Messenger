@@ -34,8 +34,13 @@ export async function apiRequest(
     await throwIfResNotOk(res);
     return res;
   } catch (error) {
-    // Network xatolarini to'liq silent qil
-    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+    // Barcha network xatolarini to'liq silent qil
+    if (error instanceof TypeError && 
+        (error.message.includes('Failed to fetch') || 
+         error.message.includes('failed to fetch') ||
+         error.message.includes('fetch') ||
+         error.message.includes('NetworkError') ||
+         error.message.includes('ERR_NETWORK'))) {
       // Console.log qilmay, silent handle qil
       return Promise.reject(new Error('SILENT_NETWORK_ERROR'));
     }
@@ -69,43 +74,59 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       staleTime: Infinity,
       retry: (failureCount, error) => {
-        // Silent network errors - retry bo'lmasin
-        if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-          return false;
-        }
-        if (error instanceof Error && error.message === 'SILENT_NETWORK_ERROR') {
+        // Barcha network errorlarni silent qil
+        const message = error?.message || '';
+        if (error instanceof TypeError || 
+            message.includes('Failed to fetch') ||
+            message.includes('failed to fetch') ||
+            message.includes('fetch') ||
+            message.includes('NetworkError') ||
+            message.includes('ERR_NETWORK') ||
+            message.includes('SILENT_NETWORK_ERROR')) {
           return false;
         }
         return false;
       },
       onError: (error) => {
-        // Barcha fetch errorlarni silent qil
-        if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-          return; // Silent
-        }
-        if (error instanceof Error && error.message === 'SILENT_NETWORK_ERROR') {
-          return; // Silent
+        // Barcha fetch va network errorlarni to'liq silent qil
+        const message = error?.message || '';
+        if (error instanceof TypeError || 
+            message.includes('Failed to fetch') ||
+            message.includes('failed to fetch') ||
+            message.includes('fetch') ||
+            message.includes('NetworkError') ||
+            message.includes('ERR_NETWORK') ||
+            message.includes('SILENT_NETWORK_ERROR')) {
+          return; // Completely silent
         }
       },
     },
     mutations: {
       retry: (failureCount, error) => {
-        // Mutation uchun ham silent
-        if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-          return false;
-        }
-        if (error instanceof Error && error.message === 'SILENT_NETWORK_ERROR') {
+        // Mutation uchun ham barcha network errorlarni silent qil
+        const message = error?.message || '';
+        if (error instanceof TypeError || 
+            message.includes('Failed to fetch') ||
+            message.includes('failed to fetch') ||
+            message.includes('fetch') ||
+            message.includes('NetworkError') ||
+            message.includes('ERR_NETWORK') ||
+            message.includes('SILENT_NETWORK_ERROR')) {
           return false;
         }
         return false;
       },
       onError: (error) => {
-        // Mutation errorlarni ham silent qil
-        if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-          return; // Silent
-        }
-        if (error instanceof Error && error.message === 'SILENT_NETWORK_ERROR') {
-          return; // Silent
+        // Mutation errorlarni ham to'liq silent qil
+        const message = error?.message || '';
+        if (error instanceof TypeError || 
+            message.includes('Failed to fetch') ||
+            message.includes('failed to fetch') ||
+            message.includes('fetch') ||
+            message.includes('NetworkError') ||
+            message.includes('ERR_NETWORK') ||
+            message.includes('SILENT_NETWORK_ERROR')) {
+          return; // Completely silent
         }
       },
     },
