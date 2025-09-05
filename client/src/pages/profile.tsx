@@ -723,11 +723,15 @@ export default function Profile() {
   // Sync form with user data and parse phone number
   useEffect(() => {
     if (user) {
+      console.log("User data received:", user); // Debug log
+      
       // Parse phone number and set country code first
       let detectedCountryCode = "+998"; // default
-      let fullPhoneNumber = detectedCountryCode; // default form value
+      let phoneOnlyPart = ""; // Telefon raqamining faqat raqam qismi
       
       if (user.phoneNumber && user.phoneNumber.trim() !== '') {
+        console.log("Processing phone number:", user.phoneNumber); // Debug log
+        
         // Extract country code from phone number - longest match first
         const sortedCodes = countryCodes
           .filter(country => !country.hidden)
@@ -736,23 +740,33 @@ export default function Profile() {
         for (const country of sortedCodes) {
           if (user.phoneNumber.startsWith(country.code)) {
             detectedCountryCode = country.code;
-            fullPhoneNumber = user.phoneNumber; // Use the full number from database
+            // Telefon raqamining faqat raqam qismini ajratib olish
+            phoneOnlyPart = user.phoneNumber.replace(country.code, '').trim();
             break;
           }
         }
       }
       
+      console.log("Detected country code:", detectedCountryCode); // Debug log
+      console.log("Phone only part:", phoneOnlyPart); // Debug log
+      
       setSelectedCountryCode(detectedCountryCode);
       
-      // Reset form with user data, ensuring phone number shows the full database value
+      // Reset form with user data
       profileForm.reset({
         firstName: user.firstName || "",
         lastName: user.lastName || "",
         email: user.email || "",
-        phoneNumber: fullPhoneNumber, // This will be the full phone number from database
+        phoneNumber: user.phoneNumber || detectedCountryCode, // To'liq telefon raqamini yoki default qiymatni ishlatish
         displayUsername: user.displayUsername || "",
         profileImageUrl: user.profileImageUrl || "",
       });
+      
+      // Form resetlangandan keyin phoneNumber ni qayta tekshirish
+      setTimeout(() => {
+        const currentPhoneValue = profileForm.getValues('phoneNumber');
+        console.log("Form phone value after reset:", currentPhoneValue); // Debug log
+      }, 100);
     }
   }, [user, profileForm]);
 
@@ -786,6 +800,8 @@ export default function Profile() {
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: UpdateProfileData) => {
+      console.log("Sending profile update:", data); // Debug log
+      
       const response = await fetch("/api/profile", {
         method: "PUT",
         headers: {
@@ -802,16 +818,29 @@ export default function Profile() {
 
       return response.json();
     },
-    onSuccess: (updatedUser) => {
+    onSuccess: async (updatedUser) => {
+      console.log("Profile updated successfully:", updatedUser); // Debug log
+      
       toast({
-        title: "Success",
-        description: "Profile updated successfully!",
+        title: "Muvaffaqiyat ✅",
+        description: "Profil ma'lumotlari yangilandi!",
       });
-      refreshUser();
+      
+      // Foydalanuvchi ma'lumotlarini yangilash
+      await refreshUser();
+      
+      // Form ni yangi ma'lumotlar bilan qayta sync qilish
+      setTimeout(() => {
+        if (updatedUser.phoneNumber) {
+          console.log("Updated phone number:", updatedUser.phoneNumber);
+        }
+      }, 500);
     },
     onError: (error: Error) => {
+      console.error("Profile update error:", error); // Debug log
+      
       toast({
-        title: "Error",
+        title: "Xatolik ❌",
         description: error.message,
         variant: "destructive",
       });
@@ -1009,6 +1038,16 @@ export default function Profile() {
   }, [user, profileForm]);
 
   const handleProfileUpdate = (data: UpdateProfileData) => {
+    console.log("Profile update handler called with:", data); // Debug log
+    
+    // Telefon raqami va operator kodini tekshirish
+    if (data.phoneNumber && data.phoneNumber.trim() !== '' && !data.phoneNumber.startsWith('+')) {
+      // Agar telefon raqami operator kodsiz bo'lsa, qo'shish
+      data.phoneNumber = selectedCountryCode + ' ' + data.phoneNumber.trim();
+    }
+    
+    console.log("Final data being sent:", data); // Debug log
+    
     updateProfileMutation.mutate(data);
   };
 
@@ -1084,7 +1123,7 @@ export default function Profile() {
                     </p>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <span>📱</span>
-                      {user?.phoneNumber ? (
+                      {user?.phoneNumber && user.phoneNumber.trim() !== '' && user.phoneNumber !== '+998' ? (
                         <span className="font-medium text-green-600 dark:text-green-400">
                           {user.phoneNumber}
                         </span>
@@ -1319,22 +1358,17 @@ export default function Profile() {
                                     // Get current form value
                                     const currentValue = field.value || '';
                                     
+                                    console.log("Input render - field value:", currentValue); // Debug log
+                                    console.log("Input render - selected country:", selectedCountryCode); // Debug log
+                                    
                                     // If form has a value and it's not just the country code, extract phone part
                                     if (currentValue && currentValue !== selectedCountryCode && currentValue.trim() !== '') {
                                       const phoneOnly = currentValue.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}\\s*`), '').trim();
+                                      console.log("Extracted phone only:", phoneOnly); // Debug log
                                       return phoneOnly;
                                     }
                                     
-                                    // If form is empty but user has phone number, sync it
-                                    if ((!currentValue || currentValue === selectedCountryCode) && user?.phoneNumber && user.phoneNumber.trim() !== '') {
-                                      if (user.phoneNumber.startsWith(selectedCountryCode)) {
-                                        const phoneOnly = user.phoneNumber.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}\\s*`), '').trim();
-                                        // Sync form value
-                                        setTimeout(() => field.onChange(user.phoneNumber), 0);
-                                        return phoneOnly;
-                                      }
-                                    }
-                                    
+                                    // Default bo'sh qiymat
                                     return '';
                                   })()}
                                 />

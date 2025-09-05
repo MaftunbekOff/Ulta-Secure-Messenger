@@ -14,16 +14,16 @@ export function useAuth() {
     queryFn: async () => {
       const token = getAuthToken();
       if (!token) return null;
-      
+
       const response = await fetch("/api/auth/me", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       if (!response.ok) {
         removeAuthToken();
         throw new Error(`${response.status}: ${response.statusText}`);
       }
-      
+
       return response.json();
     },
   });

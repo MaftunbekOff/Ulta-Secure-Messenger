@@ -674,15 +674,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Ultra-minimal response payload
+      // Complete response with all necessary fields
       const response = {
         id: user.id,
         username: user.username,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        phoneNumber: user.phoneNumber || "", // Telefon raqamini qaytarish
+        displayUsername: user.displayUsername || "",
         profileImageUrl: user.profileImageUrl,
+        birthDate: user.birthDate,
         isOnline: user.isOnline,
+        createdAt: user.createdAt,
       };
 
       // Check if response already sent before setting headers
