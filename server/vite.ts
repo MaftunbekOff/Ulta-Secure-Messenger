@@ -24,10 +24,10 @@ export async function setupVite(app: Express, server: Server) {
     middlewareMode: true,
     hmr: { 
       server,
-      port: 5000,
+      port: 5173,
       host: '0.0.0.0',
-      clientPort: 5000,
-      timeout: 60000,
+      clientPort: 5173,
+      timeout: 120000,
       overlay: false,
     },
     allowedHosts: true as const,

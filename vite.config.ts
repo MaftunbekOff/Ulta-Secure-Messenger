@@ -34,13 +34,13 @@ export default defineConfig({
       deny: ["**/.*"],
     },
     hmr: {
-      port: 5000,
+      port: 5173,
       host: '0.0.0.0',
-      clientPort: 5000,
+      clientPort: 5173,
       overlay: false,
-      timeout: 60000,
+      timeout: 120000,
     },
     host: '0.0.0.0',
-    port: 5000, // Frontend dev server port
+    port: 5173, // Frontend dev server port
   },
 });
