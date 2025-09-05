@@ -1088,7 +1088,12 @@ export default function Profile() {
                                     const fullNumber = formattedPhone ? `${selectedCountryCode} ${formattedPhone}` : selectedCountryCode;
                                     field.onChange(fullNumber);
                                   }}
-                                  value={field.value?.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}`), '').trim() || ''}
+                                  value={(() => {
+                                    const currentValue = field.value || '';
+                                    // Remove country code and extra spaces to show only phone digits
+                                    const phoneOnly = currentValue.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}\\s*`), '').trim();
+                                    return phoneOnly;
+                                  })()}
                                 />
                               </div>
                             </FormControl>
