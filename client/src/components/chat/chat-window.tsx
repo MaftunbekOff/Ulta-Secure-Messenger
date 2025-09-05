@@ -5,7 +5,8 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Shield, Wifi, WifiOff } from 'lucide-react';
+import { Shield, Wifi, WifiOff, ArrowLeft, User } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface Message {
   id: string;
@@ -18,9 +19,28 @@ interface Message {
 interface ChatWindowProps {
   chatId?: string;
   currentUserId?: string;
+  selectedChat?: {
+    id: string;
+    name?: string;
+    isGroup: boolean;
+    otherUser?: {
+      id: string;
+      username: string;
+      firstName?: string;
+      lastName?: string;
+      profileImageUrl?: string;
+      isOnline?: boolean;
+    };
+  };
+  onBack?: () => void;
 }
 
-export default function ChatWindow({ chatId = 'default', currentUserId = 'user1' }: ChatWindowProps) {
+export default function ChatWindow({ 
+  chatId = 'default', 
+  currentUserId = 'user1', 
+  selectedChat,
+  onBack 
+}: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   // Get the dynamic WebSocket URL based on current domain
   const getWebSocketUrl = () => {
@@ -35,6 +55,64 @@ export default function ChatWindow({ chatId = 'default', currentUserId = 'user1'
     lastMessage,
     connectionStatus 
   } = useWebSocket(getWebSocketUrl());
+
+  // ESC tugmasi bilan ortga qaytish
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && onBack) {
+        onBack();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onBack]);
+
+  // Chat ma'lumotlarini olish
+  const getChatDisplayName = () => {
+    if (!selectedChat) return 'UltraSecure Chat';
+    
+    if (selectedChat.isGroup) {
+      return selectedChat.name || 'Group Chat';
+    }
+    
+    if (selectedChat.otherUser) {
+      const { firstName, lastName, username } = selectedChat.otherUser;
+      if (firstName && lastName) {
+        return `${firstName} ${lastName}`;
+      }
+      return username || 'Unknown User';
+    }
+    
+    return 'UltraSecure Chat';
+  };
+
+  const getChatAvatar = () => {
+    if (!selectedChat || selectedChat.isGroup) return undefined;
+    return selectedChat.otherUser?.profileImageUrl;
+  };
+
+  const getChatInitials = () => {
+    if (!selectedChat) return 'UC';
+    
+    if (selectedChat.isGroup) {
+      return selectedChat.name?.charAt(0).toUpperCase() || 'G';
+    }
+    
+    if (selectedChat.otherUser) {
+      const { firstName, username } = selectedChat.otherUser;
+      if (firstName) {
+        return firstName.charAt(0).toUpperCase();
+      }
+      if (username) {
+        return username.charAt(0).toUpperCase();
+      }
+    }
+    
+    return 'U';
+  };
 
   // Handle incoming messages
   useEffect(() => {
@@ -109,11 +187,45 @@ export default function ChatWindow({ chatId = 'default', currentUserId = 'user1'
     <Card className="h-full flex flex-col">
       <CardHeader className="flex-shrink-0 pb-3">
         <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-green-500" />
-            <span>UltraSecure Chat</span>
+          <div className="flex items-center gap-3">
+            {onBack && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={onBack}
+                className="p-1 h-8 w-8"
+                data-testid="back-button"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={getChatAvatar() || undefined} />
+                  <AvatarFallback>{getChatInitials()}</AvatarFallback>
+                </Avatar>
+                {selectedChat && !selectedChat.isGroup && selectedChat.otherUser?.isOnline && (
+                  <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-background rounded-full" />
+                )}
+              </div>
+              
+              <div className="flex flex-col">
+                <span className="font-medium text-sm" data-testid="chat-title">
+                  {getChatDisplayName()}
+                </span>
+                {selectedChat && !selectedChat.isGroup && selectedChat.otherUser && (
+                  <span className="text-xs text-muted-foreground">
+                    @{selectedChat.otherUser.username}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
+          
           <div className="flex items-center gap-2 text-sm">
+            <Shield className="h-4 w-4 text-green-500" />
             {isConnected ? (
               <>
                 <Wifi className="h-4 w-4 text-green-500" />

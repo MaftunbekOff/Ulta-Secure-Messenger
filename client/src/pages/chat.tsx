@@ -351,7 +351,12 @@ export default function Chat() {
       {/* Main Content */}
       <div className={`flex-1 flex flex-col overflow-hidden ${isMobile ? 'pt-16' : ''}`}>
         {selectedChatId ? (
-          <ChatWindow chatId={selectedChatId} currentUserId={"user1"} />
+          <ChatWindow 
+            chatId={selectedChatId} 
+            currentUserId={"user1"}
+            selectedChat={activeChat}
+            onBack={() => setSelectedChatId(null)}
+          />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center bg-background text-center p-4">
             <div className="max-w-md mx-auto">
