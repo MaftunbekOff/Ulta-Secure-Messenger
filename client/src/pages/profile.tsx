@@ -1206,14 +1206,35 @@ export default function Profile() {
                                   }}
                                 >
                                   <SelectTrigger className="w-40 h-12">
-                                    <SelectValue placeholder="🌍 Country" />
+                                    <SelectValue>
+                                      {(() => {
+                                        const selectedCountry = countryCodes.find(c => c.code === selectedCountryCode);
+                                        return selectedCountry ? (
+                                          <div className="flex items-center gap-2">
+                                            <span>{selectedCountry.flag}</span>
+                                            <span className="text-sm">{selectedCountry.code}</span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-muted-foreground">🌍 Davlat</span>
+                                        );
+                                      })()}
+                                    </SelectValue>
                                   </SelectTrigger>
-                                  <SelectContent>
+                                  <SelectContent className="max-h-80 overflow-y-auto">
                                     {countryCodes.filter(country => !country.hidden).map((country) => (
-                                      <SelectItem key={country.id} value={country.code}>
-                                        <div className="flex items-center gap-2">
-                                          <span>{country.flag}</span>
-                                          <span>{country.code}</span>
+                                      <SelectItem 
+                                        key={country.id} 
+                                        value={country.code}
+                                        className="flex items-center justify-between p-3 hover:bg-accent cursor-pointer"
+                                      >
+                                        <div className="flex items-center gap-3 w-full">
+                                          <span className="text-lg">{country.flag}</span>
+                                          <div className="flex flex-col items-start">
+                                            <span className="font-medium text-sm">{country.code}</span>
+                                            <span className="text-xs text-muted-foreground truncate max-w-32">
+                                              {country.country.replace(/🇺🇿|🇺🇸|🇷🇺|🇨🇳|🇬🇧|🇩🇪|🇫🇷|🇮🇳|🇯🇵|🇰🇷|🇹🇷|🇰🇬|🇹🇯|🇹🇲|🇰🇿|🇦🇺|🇧🇷|🇲🇽|🇮🇹|🇪🇸|🇳🇱|🇸🇪|🇳🇴|🇩🇰|🇵🇱|🇺🇦|🇪🇬|🇸🇦|🇦🇪|🇵🇰|🇧🇩|🇮🇩|🇹🇭|🇻🇳|🇵🇭|🇲🇾|🇸🇬|🇿🇦|🇳🇬|🇰🇪|🇮🇷|🇮🇱|🇦🇫/g, '').trim()}
+                                            </span>
+                                          </div>
                                         </div>
                                       </SelectItem>
                                     ))}
