@@ -316,7 +316,7 @@ export default function Login() {
                 />
 
                 <div className="space-y-2">
-                  <Label htmlFor="empty-input">Bo'sh maydon</Label>
+                  <Label htmlFor="empty-input">Date of birth</Label>
                   <Input
                     id="empty-input"
                     type="text"
