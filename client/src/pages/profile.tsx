@@ -55,6 +55,7 @@ export default function Profile() {
   const [selectedCountryCode, setSelectedCountryCode] = useState(initializeCountryCode);
   const [usernameValidationMessage, setUsernameValidationMessage] = useState("");
   const [usernameAvailabilityMessage, setUsernameAvailabilityMessage] = useState("");
+  const [phoneValidationMessage, setPhoneValidationMessage] = useState("");
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -68,6 +69,100 @@ export default function Profile() {
   const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  // Phone number validation function
+  const validatePhoneNumber = useCallback((phoneNumber: string, countryCode: string) => {
+    // Remove all non-digits
+    const digits = phoneNumber.replace(/\D/g, '');
+    
+    if (digits.length === 0) {
+      setPhoneValidationMessage("");
+      return true;
+    }
+    
+    const validationRules = {
+      "+998": { // Uzbekistan
+        minLength: 9,
+        maxLength: 9,
+        pattern: /^[0-9]{9}$/,
+        format: "90 123 45 67",
+        validStarts: ["90", "91", "93", "94", "95", "97", "98", "99", "88", "77", "71", "78"]
+      },
+      "+1": { // USA/Canada
+        minLength: 10,
+        maxLength: 10,
+        pattern: /^[0-9]{10}$/,
+        format: "123 456 7890"
+      },
+      "+7": { // Russia
+        minLength: 10,
+        maxLength: 10,
+        pattern: /^[0-9]{10}$/,
+        format: "123 456 78 90"
+      },
+      "+44": { // UK
+        minLength: 10,
+        maxLength: 11,
+        pattern: /^[0-9]{10,11}$/,
+        format: "20 1234 5678"
+      },
+      "+49": { // Germany
+        minLength: 10,
+        maxLength: 12,
+        pattern: /^[0-9]{10,12}$/,
+        format: "30 12345678"
+      },
+      "+33": { // France
+        minLength: 9,
+        maxLength: 9,
+        pattern: /^[0-9]{9}$/,
+        format: "1 23 45 67 89"
+      }
+    };
+    
+    const rules = validationRules[countryCode as keyof typeof validationRules];
+    
+    if (!rules) {
+      // Generic validation for other countries
+      if (digits.length < 7 || digits.length > 15) {
+        setPhoneValidationMessage("⚠️ Telefon raqam uzunligi 7-15 raqam orasida bo'lishi kerak");
+        return false;
+      }
+      setPhoneValidationMessage("");
+      return true;
+    }
+    
+    let errorMessages = [];
+    
+    // Check length
+    if (digits.length < rules.minLength) {
+      errorMessages.push(`Kamida ${rules.minLength} ta raqam bo'lishi kerak`);
+    } else if (digits.length > rules.maxLength) {
+      errorMessages.push(`Ko'pi bilan ${rules.maxLength} ta raqam bo'lishi mumkin`);
+    }
+    
+    // Check pattern
+    if (!rules.pattern.test(digits)) {
+      errorMessages.push(`Noto'g'ri format. Misol: ${rules.format}`);
+    }
+    
+    // Check valid starts for Uzbekistan
+    if (countryCode === "+998" && rules.validStarts && digits.length >= 2) {
+      const start = digits.substring(0, 2);
+      if (!rules.validStarts.includes(start)) {
+        errorMessages.push(`O'zbekiston raqami ${rules.validStarts.join(', ')} bilan boshlanishi kerak`);
+      }
+    }
+    
+    if (errorMessages.length > 0) {
+      setPhoneValidationMessage(`⚠️ ${errorMessages.join(', ')}`);
+      return false;
+    }
+    
+    // Success message
+    setPhoneValidationMessage("✅ To'g'ri telefon raqam");
+    return true;
+  }, []);
 
   // Debounced username availability check
   const checkUsernameAvailability = useCallback(
@@ -659,6 +754,11 @@ export default function Profile() {
                                     const currentValue = field.value || '';
                                     const currentPhoneOnly = currentValue.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}\\s*`), '').trim();
                                     
+                                    // Validate with new country code
+                                    if (currentPhoneOnly) {
+                                      validatePhoneNumber(currentPhoneOnly.replace(/\D/g, ''), newCountryCode);
+                                    }
+                                    
                                     // Update with new country code
                                     const newFullNumber = currentPhoneOnly ? `${newCountryCode} ${currentPhoneOnly}` : newCountryCode;
                                     field.onChange(newFullNumber);
@@ -696,6 +796,9 @@ export default function Profile() {
                                     // Format phone number and combine with country code
                                     const phoneNumber = e.target.value.replace(/\D/g, '');
                                     let formattedPhone = phoneNumber;
+                                    
+                                    // Validate phone number
+                                    validatePhoneNumber(phoneNumber, selectedCountryCode);
                                     
                                     // Different formatting for different countries
                                     if (phoneNumber.length > 0) {
@@ -753,6 +856,15 @@ export default function Profile() {
                                 />
                               </div>
                             </FormControl>
+                            {phoneValidationMessage && (
+                              <div className={`text-sm mt-1 ${
+                                phoneValidationMessage.includes('✅') 
+                                  ? 'text-green-600 dark:text-green-400' 
+                                  : 'text-amber-600 dark:text-amber-400'
+                              }`}>
+                                {phoneValidationMessage}
+                              </div>
+                            )}
                             <FormMessage />
                           </FormItem>
                         )}
