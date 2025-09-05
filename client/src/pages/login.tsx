@@ -256,34 +256,27 @@ export default function Login() {
                 <FormField
                   control={registerForm.control}
                   name="birthDate"
-                  render={({ field }) => {
-                    console.log('🗓️ BirthDate field value:', field.value);
-                    console.log('🗓️ BirthDate field object:', field);
-                    return (
-                      <FormItem>
-                        <FormLabel>📅 Tug'ilgan sana</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            placeholder="YYYY-MM-DD"
-                            value={field.value || ''}
-                            onChange={(e) => {
-                              console.log('🗓️ Date input changed:', e.target.value);
-                              field.onChange(e.target.value);
-                            }}
-                            onBlur={field.onBlur}
-                            name={field.name}
-                            ref={field.ref}
-                            data-testid="input-birth-date"
-                            className="h-12 text-base"
-                            max={new Date().toISOString().split('T')[0]} // Past dates only
-                            min="1900-01-01" // Minimum realistic birth date
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>📅 Tug'ilgan sana</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          placeholder="YYYY-MM-DD"
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          data-testid="input-birth-date"
+                          className="h-12 text-base"
+                          max={new Date().toISOString().split('T')[0]} // Past dates only
+                          min="1900-01-01" // Minimum realistic birth date
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
 
                 <FormField
