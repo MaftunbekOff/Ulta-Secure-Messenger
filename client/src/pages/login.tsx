@@ -393,6 +393,48 @@ export default function Login() {
                   )}
                 />
 
+                <div className="space-y-3">
+                  <div className="flex items-start space-x-2">
+                    <input
+                      type="checkbox"
+                      id="terms"
+                      className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      required
+                    />
+                    <label htmlFor="terms" className="text-sm text-gray-700 dark:text-gray-300">
+                      I agree to the{" "}
+                      <a
+                        href="/terms"
+                        className="text-blue-600 hover:text-blue-500 underline"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Terms and Conditions
+                      </a>
+                    </label>
+                  </div>
+
+                  <div className="flex items-start space-x-2">
+                    <input
+                      type="checkbox"
+                      id="privacy"
+                      className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      required
+                    />
+                    <label htmlFor="privacy" className="text-sm text-gray-700 dark:text-gray-300">
+                      I agree to the{" "}
+                      <a
+                        href="/privacy"
+                        className="text-blue-600 hover:text-blue-500 underline"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Privacy Policy
+                      </a>
+                    </label>
+                  </div>
+                </div>
+
                 <Button
                   type="submit"
                   className="w-full h-12 text-base"
