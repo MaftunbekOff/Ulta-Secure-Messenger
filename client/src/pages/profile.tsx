@@ -19,21 +19,21 @@ import { useLocation } from "wouter";
 
 // Country codes data
 const countryCodes = [
-  { code: "+998", country: "🇺🇿 O'zbekiston", flag: "🇺🇿" },
-  { code: "+1", country: "🇺🇸 United States", flag: "🇺🇸" },
-  { code: "+7", country: "🇷🇺 Rossiya", flag: "🇷🇺" },
-  { code: "+86", country: "🇨🇳 China", flag: "🇨🇳" },
-  { code: "+44", country: "🇬🇧 United Kingdom", flag: "🇬🇧" },
-  { code: "+49", country: "🇩🇪 Germany", flag: "🇩🇪" },
-  { code: "+33", country: "🇫🇷 France", flag: "🇫🇷" },
-  { code: "+91", country: "🇮🇳 India", flag: "🇮🇳" },
-  { code: "+81", country: "🇯🇵 Japan", flag: "🇯🇵" },
-  { code: "+82", country: "🇰🇷 South Korea", flag: "🇰🇷" },
-  { code: "+90", country: "🇹🇷 Turkey", flag: "🇹🇷" },
-  { code: "+996", country: "🇰🇬 Qirg'iziston", flag: "🇰🇬" },
-  { code: "+992", country: "🇹🇯 Tojikiston", flag: "🇹🇯" },
-  { code: "+993", country: "🇹🇲 Turkmaniston", flag: "🇹🇲" },
-  { code: "+7", country: "🇰🇿 Qozog'iston", flag: "🇰🇿" },
+  { id: "uz", code: "+998", country: "🇺🇿 O'zbekiston", flag: "🇺🇿" },
+  { id: "us", code: "+1", country: "🇺🇸 United States", flag: "🇺🇸" },
+  { id: "ru", code: "+7", country: "🇷🇺 Rossiya", flag: "🇷🇺" },
+  { id: "cn", code: "+86", country: "🇨🇳 China", flag: "🇨🇳" },
+  { id: "gb", code: "+44", country: "🇬🇧 United Kingdom", flag: "🇬🇧" },
+  { id: "de", code: "+49", country: "🇩🇪 Germany", flag: "🇩🇪" },
+  { id: "fr", code: "+33", country: "🇫🇷 France", flag: "🇫🇷" },
+  { id: "in", code: "+91", country: "🇮🇳 India", flag: "🇮🇳" },
+  { id: "jp", code: "+81", country: "🇯🇵 Japan", flag: "🇯🇵" },
+  { id: "kr", code: "+82", country: "🇰🇷 South Korea", flag: "🇰🇷" },
+  { id: "tr", code: "+90", country: "🇹🇷 Turkey", flag: "🇹🇷" },
+  { id: "kg", code: "+996", country: "🇰🇬 Qirg'iziston", flag: "🇰🇬" },
+  { id: "tj", code: "+992", country: "🇹🇯 Tojikiston", flag: "🇹🇯" },
+  { id: "tm", code: "+993", country: "🇹🇲 Turkmaniston", flag: "🇹🇲" },
+  { id: "kz", code: "+77", country: "🇰🇿 Qozog'iston", flag: "🇰🇿" },
 ];
 
 export default function Profile() {
@@ -306,7 +306,7 @@ export default function Profile() {
                                   </SelectTrigger>
                                   <SelectContent>
                                     {countryCodes.map((country) => (
-                                      <SelectItem key={country.code} value={country.code}>
+                                      <SelectItem key={country.id} value={country.code}>
                                         <div className="flex items-center gap-2">
                                           <span>{country.flag}</span>
                                           <span>{country.code}</span>
@@ -363,10 +363,23 @@ export default function Profile() {
                                 className="h-12 text-base"
                                 onChange={(e) => {
                                   let value = e.target.value;
-                                  if (!value.startsWith('@') && value.length > 0) {
-                                    value = '@' + value;
-                                  }
-                                  field.onChange(value);
+                                  
+                                  // Remove @ prefix temporarily for filtering
+                                  let username = value.startsWith('@') ? value.slice(1) : value;
+                                  
+                                  // Apply username validation rules
+                                  // Remove all characters that are not letters, numbers, or underscores
+                                  username = username.replace(/[^a-zA-Z0-9_]/g, '');
+                                  
+                                  // If it starts with a number or underscore, remove all leading numbers and underscores
+                                  username = username.replace(/^[0-9_]+/, '');
+                                  
+                                  // Remove consecutive underscores (replace multiple underscores with single one)
+                                  username = username.replace(/_+/g, '_');
+                                  
+                                  // Add @ prefix back
+                                  const finalValue = username.length > 0 ? '@' + username : '';
+                                  field.onChange(finalValue);
                                 }}
                               />
                             </FormControl>
