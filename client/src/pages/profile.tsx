@@ -10,17 +10,47 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { getAuthHeaders } from "@/lib/authUtils";
 import { updateProfileSchema, changePasswordSchema, type UpdateProfileData, type ChangePasswordData } from "@shared/schema";
 import { useLocation } from "wouter";
 
+// Country codes data
+const countryCodes = [
+  { code: "+998", country: "🇺🇿 O'zbekiston", flag: "🇺🇿" },
+  { code: "+1", country: "🇺🇸 United States", flag: "🇺🇸" },
+  { code: "+7", country: "🇷🇺 Rossiya", flag: "🇷🇺" },
+  { code: "+86", country: "🇨🇳 China", flag: "🇨🇳" },
+  { code: "+44", country: "🇬🇧 United Kingdom", flag: "🇬🇧" },
+  { code: "+49", country: "🇩🇪 Germany", flag: "🇩🇪" },
+  { code: "+33", country: "🇫🇷 France", flag: "🇫🇷" },
+  { code: "+91", country: "🇮🇳 India", flag: "🇮🇳" },
+  { code: "+81", country: "🇯🇵 Japan", flag: "🇯🇵" },
+  { code: "+82", country: "🇰🇷 South Korea", flag: "🇰🇷" },
+  { code: "+90", country: "🇹🇷 Turkey", flag: "🇹🇷" },
+  { code: "+996", country: "🇰🇬 Qirg'iziston", flag: "🇰🇬" },
+  { code: "+992", country: "🇹🇯 Tojikiston", flag: "🇹🇯" },
+  { code: "+993", country: "🇹🇲 Turkmaniston", flag: "🇹🇲" },
+  { code: "+7", country: "🇰🇿 Qozog'iston", flag: "🇰🇿" },
+];
+
 export default function Profile() {
   const [, setLocation] = useLocation();
   const { user, refreshUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  // Initialize country code from user's existing phone number
+  const initializeCountryCode = () => {
+    if (user?.phoneNumber) {
+      const userCode = countryCodes.find(country => user.phoneNumber?.startsWith(country.code));
+      return userCode ? userCode.code : "+998";
+    }
+    return "+998";
+  };
+  
+  const [selectedCountryCode, setSelectedCountryCode] = useState(initializeCountryCode);
 
   const profileForm = useForm<UpdateProfileData>({
     resolver: zodResolver(updateProfileSchema),
@@ -269,13 +299,50 @@ export default function Profile() {
                           <FormItem>
                             <FormLabel>📱 Telefon raqam</FormLabel>
                             <FormControl>
-                              <Input
-                                type="tel"
-                                placeholder="+998 90 123 45 67"
-                                {...field}
-                                data-testid="input-phone-number"
-                                className="h-12 text-base"
-                              />
+                              <div className="flex gap-2">
+                                <Select value={selectedCountryCode} onValueChange={setSelectedCountryCode}>
+                                  <SelectTrigger className="w-40 h-12">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {countryCodes.map((country) => (
+                                      <SelectItem key={country.code} value={country.code}>
+                                        <div className="flex items-center gap-2">
+                                          <span>{country.flag}</span>
+                                          <span>{country.code}</span>
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Input
+                                  type="tel"
+                                  placeholder="90 123 45 67"
+                                  {...field}
+                                  data-testid="input-phone-number"
+                                  className="h-12 text-base flex-1"
+                                  onChange={(e) => {
+                                    // Format phone number and combine with country code
+                                    const phoneNumber = e.target.value.replace(/\D/g, '');
+                                    let formattedPhone = phoneNumber;
+                                    
+                                    // Format for Uzbekistan style (90 123 45 67)
+                                    if (phoneNumber.length >= 2 && phoneNumber.length <= 9) {
+                                      formattedPhone = phoneNumber.replace(/(\d{2})(\d{0,3})(\d{0,2})(\d{0,2})/, (match, p1, p2, p3, p4) => {
+                                        let result = p1;
+                                        if (p2) result += ' ' + p2;
+                                        if (p3) result += ' ' + p3;
+                                        if (p4) result += ' ' + p4;
+                                        return result;
+                                      });
+                                    }
+                                    
+                                    const fullNumber = formattedPhone ? `${selectedCountryCode} ${formattedPhone}` : selectedCountryCode;
+                                    field.onChange(fullNumber);
+                                  }}
+                                  value={field.value?.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}`), '').trim() || ''}
+                                />
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
