@@ -40,6 +40,7 @@ Preferred communication style: Simple, everyday language.
 - **Message Encryption**: Client-side encryption for message content (MVP implementation with XOR cipher)
 - **Authentication**: JWT-based authentication with secure token storage
 - **Password Security**: bcrypt hashing for password storage
+- **Password Reset**: Secure password reset system with time-limited tokens
 - **Session Management**: Secure session handling with HTTP-only considerations
 
 ### Real-time Communication

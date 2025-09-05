@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Shield, Eye, EyeOff, Loader2, Check, X } from "lucide-react";
@@ -179,6 +179,19 @@ export default function Login() {
                     </FormItem>
                   )}
                 />
+
+                {/* Forgot Password Link */}
+                <div className="text-right">
+                  <Link href="/forgot-password">
+                    <Button
+                      variant="link"
+                      className="text-sm p-0 h-auto"
+                      data-testid="link-forgot-password"
+                    >
+                      Parolni unutdingizmi?
+                    </Button>
+                  </Link>
+                </div>
 
                 <Button
                   type="submit"

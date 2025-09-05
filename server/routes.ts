@@ -8,7 +8,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
 import { storage } from "./storage";
-import { loginSchema, registerSchema, insertMessageSchema, updateProfileSchema, changePasswordSchema } from "@shared/schema";
+import { loginSchema, registerSchema, insertMessageSchema, updateProfileSchema, changePasswordSchema, forgotPasswordSchema, resetPasswordSchema } from "@shared/schema";
 import { generateKeyPair, encrypt as militaryEncrypt, decrypt as militaryDecrypt } from "./militaryEncryption";
 import { parse } from "url";
 
@@ -218,6 +218,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Logged out successfully" });
     } catch (error) {
       res.status(500).json({ message: "Logout failed" });
+    }
+  });
+
+  // Password reset routes
+  app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+      const { email } = forgotPasswordSchema.parse(req.body);
+      
+      // Check if user exists
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        // Don't reveal whether user exists for security
+        return res.json({ message: "Agar email mavjud bo'lsa, parolni tiklash ko'rsatmalari yuborildi" });
+      }
+
+      // Generate reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 3600000); // 1 hour from now
+
+      // Store reset token in database
+      await storage.createPasswordResetToken(email, resetToken, expiresAt);
+
+      // In a real app, you would send email here
+      // For now, we'll return the token (in production, this should be sent via email)
+      console.log(`🔑 Password reset token for ${email}: ${resetToken}`);
+      
+      res.json({ 
+        message: "Parolni tiklash ko'rsatmalari email manzilingizga yuborildi",
+        // DEVELOPMENT ONLY - remove in production
+        resetToken: resetToken
+      });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Parolni tiklashda xatolik" });
+    }
+  });
+
+  app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+      const { token, newPassword, confirmPassword } = resetPasswordSchema.parse(req.body);
+
+      // Find valid reset token
+      const resetTokenRecord = await storage.getPasswordResetToken(token);
+      if (!resetTokenRecord) {
+        return res.status(400).json({ message: "Yaroqsiz yoki muddati o'tgan token" });
+      }
+
+      // Check if token is expired
+      if (new Date() > new Date(resetTokenRecord.expiresAt)) {
+        return res.status(400).json({ message: "Token muddati tugagan" });
+      }
+
+      // Check if token was already used
+      if (resetTokenRecord.usedAt) {
+        return res.status(400).json({ message: "Token allaqachon ishlatilgan" });
+      }
+
+      // Find user by email
+      const user = await storage.getUserByEmail(resetTokenRecord.email);
+      if (!user) {
+        return res.status(400).json({ message: "Foydalanuvchi topilmadi" });
+      }
+
+      // Hash new password
+      const newPasswordHash = await bcrypt.hash(newPassword, 12);
+
+      // Update password and mark token as used
+      await storage.updateUserPassword(user.id, newPasswordHash);
+      await storage.markPasswordResetTokenAsUsed(token);
+
+      res.json({ message: "Parol muvaffaqiyatli o'zgartirildi" });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Parolni o'zgartirishda xatolik" });
     }
   });
 

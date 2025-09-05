@@ -9,6 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import Chat from "@/pages/chat";
 import Login from "@/pages/login";
 import Profile from "@/pages/profile";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
 
@@ -26,7 +28,12 @@ function Router() {
   return (
     <Switch>
       {!isAuthenticated ? (
-        <Route path="/" component={Login} />
+        <>
+          <Route path="/" component={Login} />
+          <Route path="/login" component={Login} />
+          <Route path="/forgot-password" component={ForgotPassword} />
+          <Route path="/reset-password" component={ResetPassword} />
+        </>
       ) : (
         <>
           <Route path="/" component={Chat} />

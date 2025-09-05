@@ -58,6 +58,16 @@ export const messageReads = pgTable("message_reads", {
   pk: primaryKey({ columns: [table.messageId, table.userId] }),
 }));
 
+// Password reset tokens
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email", { length: 255 }).notNull(),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   chatMembers: many(chatMembers),
@@ -198,6 +208,20 @@ export const changePasswordSchema = z.object({
   path: ["confirmPassword"],
 });
 
+// Password reset schemas
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Yaroqli email manzil kiriting"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Reset token kerak"),
+  newPassword: z.string().min(6, "Parol kamida 6 ta belgidan iborat bo'lishi kerak"),
+  confirmPassword: z.string().min(6, "Parolni tasdiqlang"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Parollar mos kelmaydi",
+  path: ["confirmPassword"],
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -211,3 +235,6 @@ export type LoginData = z.infer<typeof loginSchema>;
 export type RegisterData = z.infer<typeof registerSchema>;
 export type UpdateProfileData = z.infer<typeof updateProfileSchema>;
 export type ChangePasswordData = z.infer<typeof changePasswordSchema>;
+export type ForgotPasswordData = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;

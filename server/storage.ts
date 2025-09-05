@@ -7,11 +7,13 @@ import {
   type InsertMessage,
   type ChatMember,
   type InsertChatMember,
+  type PasswordResetToken,
   users,
   chats,
   chatMembers,
   messages,
   messageReads,
+  passwordResetTokens,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sql, ne } from "drizzle-orm";
@@ -58,6 +60,11 @@ export interface IStorage {
   getChatMessages(chatId: string, limit?: number, offset?: number): Promise<Array<Message & { sender: User }>>;
   markMessageAsRead(messageId: string, userId: string): Promise<void>;
   getUnreadMessageCount(chatId: string, userId: string): Promise<number>;
+
+  // Password reset operations
+  createPasswordResetToken(email: string, token: string, expiresAt: Date): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  markPasswordResetTokenAsUsed(token: string): Promise<void>;
 }
 
 export class MemoryStorage implements IStorage {
@@ -66,6 +73,7 @@ export class MemoryStorage implements IStorage {
   private messages: Map<string, Message> = new Map();
   private chatMembers: Map<string, ChatMember[]> = new Map();
   private messageReads: Map<string, string[]> = new Map();
+  private passwordResetTokens: Map<string, PasswordResetToken> = new Map();
 
   async getUser(id: string): Promise<User | undefined> {
     return this.users.get(id);
@@ -337,6 +345,33 @@ export class MemoryStorage implements IStorage {
     }
 
     return count;
+  }
+
+  // Password reset operations
+  async createPasswordResetToken(email: string, token: string, expiresAt: Date): Promise<PasswordResetToken> {
+    const resetToken: PasswordResetToken = {
+      id: generateId(),
+      email,
+      token,
+      expiresAt,
+      usedAt: null,
+      createdAt: new Date(),
+    };
+
+    this.passwordResetTokens.set(token, resetToken);
+    return resetToken;
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    return this.passwordResetTokens.get(token);
+  }
+
+  async markPasswordResetTokenAsUsed(token: string): Promise<void> {
+    const resetToken = this.passwordResetTokens.get(token);
+    if (resetToken) {
+      resetToken.usedAt = new Date();
+      this.passwordResetTokens.set(token, resetToken);
+    }
   }
 }
 
@@ -671,6 +706,37 @@ export class DatabaseStorage implements IStorage {
       ));
 
     return result[0]?.count || 0;
+  }
+
+  // Password reset operations
+  async createPasswordResetToken(email: string, token: string, expiresAt: Date): Promise<PasswordResetToken> {
+    const result = await db
+      .insert(passwordResetTokens)
+      .values({
+        email,
+        token,
+        expiresAt,
+      })
+      .returning();
+
+    return result[0];
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    const result = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(eq(passwordResetTokens.token, token))
+      .limit(1);
+
+    return result[0];
+  }
+
+  async markPasswordResetTokenAsUsed(token: string): Promise<void> {
+    await db
+      .update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResetTokens.token, token));
   }
 }
 
