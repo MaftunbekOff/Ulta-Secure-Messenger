@@ -175,18 +175,9 @@ export default function ChatWindow({
     }
   }, [lastMessage]);
 
-  // Add some demo messages on load
+  // Initialize with empty messages - no spam welcome messages
   useEffect(() => {
-    const demoMessages: Message[] = [
-      {
-        id: '1',
-        content: 'UltraSecure Messenger ga xush kelibsiz! 🛡️',
-        userId: 'system',
-        timestamp: new Date(),
-        encrypted: true
-      }
-    ];
-    setMessages(demoMessages);
+    setMessages([]);
   }, []);
 
   const handleSendMessage = (content: string) => {
