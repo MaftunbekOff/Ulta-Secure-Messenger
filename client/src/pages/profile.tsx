@@ -628,7 +628,20 @@ export default function Profile() {
                             <FormLabel>📱 Telefon raqam</FormLabel>
                             <FormControl>
                               <div className="flex gap-2">
-                                <Select value={selectedCountryCode} onValueChange={setSelectedCountryCode}>
+                                <Select 
+                                  value={selectedCountryCode} 
+                                  onValueChange={(newCountryCode) => {
+                                    setSelectedCountryCode(newCountryCode);
+                                    
+                                    // Get current phone number without country code
+                                    const currentValue = field.value || '';
+                                    const currentPhoneOnly = currentValue.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}\\s*`), '').trim();
+                                    
+                                    // Update with new country code
+                                    const newFullNumber = currentPhoneOnly ? `${newCountryCode} ${currentPhoneOnly}` : newCountryCode;
+                                    field.onChange(newFullNumber);
+                                  }}
+                                >
                                   <SelectTrigger className="w-40 h-12">
                                     <SelectValue />
                                   </SelectTrigger>
@@ -645,7 +658,15 @@ export default function Profile() {
                                 </Select>
                                 <Input
                                   type="tel"
-                                  placeholder="90 123 45 67"
+                                  placeholder={
+                                    selectedCountryCode === "+998" ? "90 123 45 67" :
+                                    selectedCountryCode === "+1" ? "123 456 7890" :
+                                    selectedCountryCode === "+7" ? "123 456 78 90" :
+                                    selectedCountryCode === "+44" ? "20 1234 5678" :
+                                    selectedCountryCode === "+49" ? "30 12345678" :
+                                    selectedCountryCode === "+33" ? "1 23 45 67 89" :
+                                    "Phone number"
+                                  }
                                   {...field}
                                   data-testid="input-phone-number"
                                   className="h-12 text-base flex-1"
@@ -654,15 +675,53 @@ export default function Profile() {
                                     const phoneNumber = e.target.value.replace(/\D/g, '');
                                     let formattedPhone = phoneNumber;
                                     
-                                    // Format for Uzbekistan style (90 123 45 67)
-                                    if (phoneNumber.length >= 2 && phoneNumber.length <= 9) {
-                                      formattedPhone = phoneNumber.replace(/(\d{2})(\d{0,3})(\d{0,2})(\d{0,2})/, (match, p1, p2, p3, p4) => {
-                                        let result = p1;
-                                        if (p2) result += ' ' + p2;
-                                        if (p3) result += ' ' + p3;
-                                        if (p4) result += ' ' + p4;
-                                        return result;
-                                      });
+                                    // Different formatting for different countries
+                                    if (phoneNumber.length > 0) {
+                                      switch (selectedCountryCode) {
+                                        case "+998": // Uzbekistan (90 123 45 67)
+                                          if (phoneNumber.length <= 9) {
+                                            formattedPhone = phoneNumber.replace(/(\d{2})(\d{0,3})(\d{0,2})(\d{0,2})/, (match, p1, p2, p3, p4) => {
+                                              let result = p1;
+                                              if (p2) result += ' ' + p2;
+                                              if (p3) result += ' ' + p3;
+                                              if (p4) result += ' ' + p4;
+                                              return result;
+                                            });
+                                          }
+                                          break;
+                                        case "+1": // USA/Canada (123) 456-7890
+                                          if (phoneNumber.length <= 10) {
+                                            formattedPhone = phoneNumber.replace(/(\d{3})(\d{0,3})(\d{0,4})/, (match, p1, p2, p3) => {
+                                              let result = p1;
+                                              if (p2) result += ' ' + p2;
+                                              if (p3) result += ' ' + p3;
+                                              return result;
+                                            });
+                                          }
+                                          break;
+                                        case "+7": // Russia (123) 456-78-90
+                                          if (phoneNumber.length <= 10) {
+                                            formattedPhone = phoneNumber.replace(/(\d{3})(\d{0,3})(\d{0,2})(\d{0,2})/, (match, p1, p2, p3, p4) => {
+                                              let result = p1;
+                                              if (p2) result += ' ' + p2;
+                                              if (p3) result += ' ' + p3;
+                                              if (p4) result += ' ' + p4;
+                                              return result;
+                                            });
+                                          }
+                                          break;
+                                        default:
+                                          // Generic formatting for other countries
+                                          if (phoneNumber.length <= 12) {
+                                            formattedPhone = phoneNumber.replace(/(\d{1,3})(\d{0,3})(\d{0,3})(\d{0,3})/, (match, p1, p2, p3, p4) => {
+                                              let result = p1;
+                                              if (p2) result += ' ' + p2;
+                                              if (p3) result += ' ' + p3;
+                                              if (p4) result += ' ' + p4;
+                                              return result;
+                                            });
+                                          }
+                                      }
                                     }
                                     
                                     const fullNumber = formattedPhone ? `${selectedCountryCode} ${formattedPhone}` : selectedCountryCode;
