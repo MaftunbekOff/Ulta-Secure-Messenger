@@ -6,8 +6,6 @@ import { Shield, Eye, EyeOff, Loader2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
@@ -18,7 +16,6 @@ import { securityMonitor, initializeSecurityMonitoring } from "../lib/securityMo
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const [birthDate, setBirthDate] = useState<Date | null>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login, register } = useAuth();
@@ -300,19 +297,13 @@ export default function Login() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="birth-date">Date of birth</Label>
-                  <DatePicker
+                  <Label htmlFor="birth-date">Tug'ilgan sana</Label>
+                  <Input
                     id="birth-date"
-                    selected={birthDate}
-                    onChange={(date: Date | null) => setBirthDate(date)}
-                    placeholderText="Tug'ilgan sanani tanlang"
-                    dateFormat="dd/MM/yyyy"
-                    showYearDropdown
-                    showMonthDropdown
-                    dropdownMode="select"
-                    maxDate={new Date()}
-                    className="h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    data-testid="datepicker-birth-date"
+                    type="date"
+                    placeholder="YYYY-MM-DD formatida bo'lishi kerak"
+                    className="h-12 text-base"
+                    data-testid="input-birth-date"
                   />
                 </div>
 
