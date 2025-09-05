@@ -17,7 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 // Mocking necessary context/state variables that are used in the `sendMessage` function
 // In a real application, these would be provided by React Context or props.
 const useChatContext = () => {
-  const [selectedChat, setSelectedChat] = useState<any>(activeChat); // Mock selectedChat
+  const [selectedChat, setSelectedChat] = useState<any>(null); // Mock selectedChat
   const [user, setUser] = useState<any>({ id: 'user1', name: 'Test User' }); // Mock user
   const [messages, setMessages] = useState<any[]>([]); // Mock messages
   const [isLoading, setIsLoading] = useState(false); // Mock isLoading state

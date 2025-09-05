@@ -193,28 +193,21 @@ export default function ChatWindow({
       return;
     }
 
-    const message = {
-      type: 'message',
-      chatId,
-      content,
-      messageId: Date.now().toString(),
-      userId: currentUserId,
-      timestamp: new Date().toISOString()
-    };
-
     // Add to local messages immediately
     const localMessage: Message = {
-      id: message.messageId,
-      content: message.content,
-      userId: message.userId,
+      id: Date.now().toString(),
+      content: content,
+      userId: currentUserId || 'user1',
       timestamp: new Date(),
       encrypted: true
     };
 
     setMessages(prev => [...prev, localMessage]);
 
-    // Send via WebSocket
-    sendMessage(message);
+    // Send simple message via WebSocket
+    if (sendMessage && typeof sendMessage === 'function') {
+      sendMessage(content);
+    }
   };
 
   return (
@@ -289,6 +282,7 @@ export default function ChatWindow({
                 message={message}
                 isOwn={message.userId === currentUserId}
                 senderName={message.userId === 'system' ? 'System' : `User ${message.userId}`}
+                senderId={message.userId}
               />
             ))}
           </div>
@@ -298,7 +292,6 @@ export default function ChatWindow({
           <MessageInput
             onSendMessage={handleSendMessage}
             disabled={!isConnected}
-            placeholder={isConnected ? "Xabar yozing..." : "Ulanish kutilmoqda..."}
           />
         </div>
       </CardContent>
