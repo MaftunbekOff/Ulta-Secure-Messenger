@@ -313,8 +313,8 @@ export default function Login() {
 
                 <Button
                   type="submit"
-                  className="w-full"
-                  disabled={register.isPending || usernameStatus === "taken" || (usernameValue.length >= 3 && usernameStatus === "checking")}
+                  className="w-full h-12 text-base"
+                  disabled={register.isPending}
                   data-testid="button-register"
                 >
                   {register.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
