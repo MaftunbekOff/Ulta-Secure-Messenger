@@ -316,8 +316,22 @@ export default function Login() {
                       data-testid="input-birth-date"
                     />
                     {birthDate && (
-                      <div className="text-base font-medium text-blue-600 dark:text-blue-400 min-w-0">
-                        {Math.floor((new Date().getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25))} yosh
+                      <div className="text-sm font-medium text-blue-600 dark:text-blue-400 min-w-0 space-y-1">
+                        <div>{Math.floor((new Date().getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25))} yosh</div>
+                        <div className="text-xs text-gray-500">
+                          {(() => {
+                            const today = new Date();
+                            const thisYear = today.getFullYear();
+                            const birthday = new Date(thisYear, birthDate.getMonth(), birthDate.getDate());
+
+                            if (birthday < today) {
+                              birthday.setFullYear(thisYear + 1);
+                            }
+
+                            const daysUntil = Math.ceil((birthday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                            return daysUntil === 0 ? "🎉 Bugun tug'ilgan kun!" : `🎂 ${daysUntil} kun qoldi`;
+                          })()}
+                        </div>
                       </div>
                     )}
                   </div>
