@@ -28,6 +28,8 @@ export default function Profile() {
       firstName: user?.firstName || "",
       lastName: user?.lastName || "",
       email: user?.email || "",
+      phoneNumber: user?.phoneNumber || "",
+      displayUsername: user?.displayUsername || "",
       profileImageUrl: user?.profileImageUrl || "",
     },
   });
@@ -180,7 +182,13 @@ export default function Profile() {
                       }
                     </h3>
                     <p className="text-muted-foreground" data-testid="profile-username">
-                      @{user?.username}
+                      {user?.displayUsername || `@${user?.username}`}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      📱 {user?.phoneNumber || "Telefon qo'shilmagan"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      🎂 {user?.birthDate || "Tug'ilgan sana kiritilmagan"}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Joined {user?.createdAt && formatDate(user.createdAt.toString())}
@@ -252,6 +260,54 @@ export default function Profile() {
                         </FormItem>
                       )}
                     />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField
+                        control={profileForm.control}
+                        name="phoneNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>📱 Telefon raqam</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="tel"
+                                placeholder="+998 90 123 45 67"
+                                {...field}
+                                data-testid="input-phone-number"
+                                className="h-12 text-base"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={profileForm.control}
+                        name="displayUsername"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>👤 @Username</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="@johndoe"
+                                {...field}
+                                data-testid="input-display-username"
+                                className="h-12 text-base"
+                                onChange={(e) => {
+                                  let value = e.target.value;
+                                  if (!value.startsWith('@') && value.length > 0) {
+                                    value = '@' + value;
+                                  }
+                                  field.onChange(value);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
                     <FormField
                       control={profileForm.control}

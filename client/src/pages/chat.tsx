@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Link } from "wouter";
 import Sidebar from "@/components/chat/sidebar";
 import ChatWindow from "@/components/chat/chat-window";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -114,7 +116,7 @@ export default function Chat() {
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null); // Ref for chat container
   const [autoScroll, setAutoScroll] = useState(true); // State for auto-scroll
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   
   // Fetch chats to get real data
   const { data: chats } = useQuery({
@@ -300,7 +302,32 @@ export default function Chat() {
             {isSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
           <h1 className="font-semibold">UltraSecure Messenger</h1>
-          <div className="w-9" />
+          
+          {/* User Navigation */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-9 w-9 rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.profileImageUrl || undefined} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                    {user?.username?.charAt(0).toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem asChild>
+                <Link href="/profile" className="flex items-center w-full">
+                  <User className="h-4 w-4 mr-2" />
+                  Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { logout(); window.location.href = '/'; }}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
 

@@ -37,7 +37,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserOnlineStatus(userId: string, isOnline: boolean): Promise<void>;
-  updateUserProfile(userId: string, data: { firstName?: string; lastName?: string; email?: string; profileImageUrl?: string }): Promise<User>;
+  updateUserProfile(userId: string, data: { firstName?: string; lastName?: string; email?: string; phoneNumber?: string; displayUsername?: string; profileImageUrl?: string }): Promise<User>;
   updateUserPassword(userId: string, passwordHash: string): Promise<void>;
 
   // Chat operations
@@ -89,6 +89,9 @@ export class MemoryStorage implements IStorage {
       passwordHash: userData.passwordHash,
       firstName: userData.firstName || null,
       lastName: userData.lastName || null,
+      birthDate: userData.birthDate || null,
+      phoneNumber: null,
+      displayUsername: null,
       profileImageUrl: null,
       publicKey: userData.publicKey || null,
       isOnline: false,
@@ -109,7 +112,7 @@ export class MemoryStorage implements IStorage {
     }
   }
 
-  async updateUserProfile(userId: string, data: { firstName?: string; lastName?: string; email?: string; profileImageUrl?: string }): Promise<User> {
+  async updateUserProfile(userId: string, data: { firstName?: string; lastName?: string; email?: string; phoneNumber?: string; displayUsername?: string; profileImageUrl?: string }): Promise<User> {
     const user = this.users.get(userId);
     if (!user) {
       throw new Error("User not found");

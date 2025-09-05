@@ -10,6 +10,9 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   firstName: varchar("first_name", { length: 100 }),
   lastName: varchar("last_name", { length: 100 }),
+  birthDate: varchar("birth_date", { length: 10 }), // Format: YYYY-MM-DD
+  phoneNumber: varchar("phone_number", { length: 20 }),
+  displayUsername: varchar("display_username", { length: 50 }).unique(), // @username for profile
   profileImageUrl: varchar("profile_image_url", { length: 500 }),
   publicKey: text("public_key"), // RSA-4096 public key for end-to-end encryption
   isOnline: boolean("is_online").default(false),
@@ -126,6 +129,9 @@ export const registerSchema = z.object({
   password: z.string().min(6),
   firstName: z.string().min(1).max(100).optional(),
   lastName: z.string().min(1).max(100).optional(),
+  birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
+    message: "Birth date must be in YYYY-MM-DD format"
+  }),
 });
 
 // Profile schemas
@@ -133,6 +139,10 @@ export const updateProfileSchema = z.object({
   firstName: z.string().min(1, "First name is required").max(100),
   lastName: z.string().min(1, "Last name is required").max(100),
   email: z.string().email("Invalid email address"),
+  phoneNumber: z.string().min(1, "Phone number is required").max(20),
+  displayUsername: z.string().min(3).max(50).regex(/^@[a-zA-Z][a-zA-Z0-9_]*$/, {
+    message: "Username must start with @ followed by letters, numbers, and underscores"
+  }).optional(),
   profileImageUrl: z.string().url("Invalid image URL").optional().or(z.literal("")),
 });
 

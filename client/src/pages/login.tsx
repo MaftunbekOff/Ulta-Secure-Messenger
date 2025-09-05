@@ -20,10 +20,6 @@ export default function Login() {
   const { toast } = useToast();
   const { login, register } = useAuth();
 
-  // Separate state for username to fix the binding issue
-  const [usernameValue, setUsernameValue] = useState("");
-  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
-  const [usernameCheckTimeout, setUsernameCheckTimeout] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     try {
@@ -53,6 +49,7 @@ export default function Login() {
       password: "",
       firstName: "",
       lastName: "",
+      birthDate: "",
     },
     mode: "onChange",
     shouldFocusError: true,
@@ -80,46 +77,18 @@ export default function Login() {
 
   
 
-  // Username availability check function
-  const checkUsernameAvailability = async (username: string) => {
-    if (username.length < 3) {
-      setUsernameStatus("idle");
-      return;
-    }
-
-    setUsernameStatus("checking");
-
-    try {
-      const response = await fetch(`/api/auth/check-username/${username}`);
-      const data = await response.json();
-
-      if (data.available) {
-        setUsernameStatus("available");
-      } else {
-        setUsernameStatus("taken");
-      }
-    } catch (error) {
-      setUsernameStatus("idle");
-    }
-  };
 
   const handleRegister = async (data: RegisterData) => {
     try {
-      // Ensure username is included in the data
-      const registerData = { ...data, username: usernameValue };
+      // Generate auto username from email
+      const autoUsername = data.email.split('@')[0] + '_' + Math.random().toString(36).substr(2, 4);
+      const registerData = { ...data, username: autoUsername };
       await register.mutateAsync(registerData);
 
       // Store email for future use
       localStorage.setItem('lastLoginEmail', data.email);
 
-      securityMonitor.logSecurityEvent({
-        type: 'login_attempt',
-        severity: 'low',
-        details: {
-          action: 'account_created',
-          enhanced_security: true
-        }
-      });
+      // Security event logged internally
 
       toast({
         title: "🛡️ Ultra-secure account created!",
@@ -267,86 +236,26 @@ export default function Login() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <div className="relative">
-                    <Input
-                      id="username"
-                      placeholder="johndoe"
-                      value={usernameValue}
-                      onChange={(e) => {
-                        let filtered = e.target.value;
-
-                        // Remove all characters that are not letters, numbers, or underscores
-                        filtered = filtered.replace(/[^a-zA-Z0-9_]/g, '');
-
-                        // If it starts with a number or underscore, remove all leading numbers and underscores
-                        filtered = filtered.replace(/^[0-9_]+/, '');
-
-                        // Remove consecutive underscores (replace multiple underscores with single one)
-                        filtered = filtered.replace(/_+/g, '_');
-
-                        setUsernameValue(filtered);
-                        registerForm.setValue("username", filtered, {
-                          shouldValidate: true,
-                          shouldDirty: true,
-                          shouldTouch: true
-                        });
-
-                        // Clear previous timeout
-                        if (usernameCheckTimeout) {
-                          clearTimeout(usernameCheckTimeout);
-                        }
-
-                        // Set new timeout for username check (debouncing)
-                        if (filtered.length >= 3) {
-                          const newTimeout = setTimeout(() => {
-                            checkUsernameAvailability(filtered);
-                          }, 500);
-                          setUsernameCheckTimeout(newTimeout);
-                        } else {
-                          setUsernameStatus("idle");
-                        }
-                      }}
-                      data-testid="input-username"
-                      className={`h-12 text-base pr-12 ${
-                        usernameStatus === "taken"
-                          ? "border-destructive focus:border-destructive"
-                          : usernameStatus === "available"
-                          ? "border-green-500 focus:border-green-500"
-                          : ""
-                      }`}
-                    />
-                    {usernameValue.length >= 3 && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        {usernameStatus === "checking" && (
-                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                        )}
-                        {usernameStatus === "available" && (
-                          <Check className="h-4 w-4 text-green-500" />
-                        )}
-                        {usernameStatus === "taken" && (
-                          <X className="h-4 w-4 text-destructive" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {registerForm.formState.errors.username && (
-                    <p className="text-sm font-medium text-destructive">
-                      {registerForm.formState.errors.username?.message}
-                    </p>
+                <FormField
+                  control={registerForm.control}
+                  name="birthDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>📅 Tug'ilgan sana</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          placeholder="YYYY-MM-DD"
+                          {...field}
+                          data-testid="input-birth-date"
+                          className="h-12 text-base"
+                          max={new Date().toISOString().split('T')[0]} // Past dates only
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                  {usernameStatus === "taken" && (
-                    <p className="text-sm font-medium text-destructive">
-                      This username is already taken
-                    </p>
-                  )}
-                  {usernameStatus === "available" && (
-                    <p className="text-sm font-medium text-green-600">
-                      Username is available
-                    </p>
-                  )}
-                </div>
+                />
 
                 <FormField
                   control={registerForm.control}

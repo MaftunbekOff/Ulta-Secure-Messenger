@@ -291,6 +291,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: updatedUser.email,
         firstName: updatedUser.firstName,
         lastName: updatedUser.lastName,
+        birthDate: updatedUser.birthDate,
+        phoneNumber: updatedUser.phoneNumber,
+        displayUsername: updatedUser.displayUsername,
         profileImageUrl: updatedUser.profileImageUrl,
         isOnline: updatedUser.isOnline,
       });
