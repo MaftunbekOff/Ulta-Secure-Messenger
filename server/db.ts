@@ -2,6 +2,7 @@ import { Pool } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import * as schema from "@shared/schema";
 import WebSocket from "ws";
+import 'dotenv/config';
 
 // Set up WebSocket for Neon serverless
 if (!globalThis.WebSocket) {
