@@ -122,7 +122,17 @@ export function useWebSocket() {
       };
 
       ws.current.onclose = (event) => {
+        console.log('WebSocket ulanish yopildi:', event.code, event.reason);
         setConnected(false);
+        setConnectionStatus('disconnected');
+        
+        // Auto-reconnect if connection was established before
+        if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
+          setTimeout(() => {
+            setReconnectAttempts(prev => prev + 1);
+            connectWebSocket();
+          }, 2000);
+        }
         setIsConnecting(false);
         setConnectionStatus('disconnected');
 
@@ -187,39 +197,61 @@ export function useWebSocket() {
     };
   }, [connectWebSocket]); // Depend on connectWebSocket to ensure it's stable
 
-  const sendMessage = useCallback((message: Omit<WebSocketMessage, 'timestamp'>) => {
+  const sendMessage = useCallback((content: string) => {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       try {
-        ws.current.send(JSON.stringify({
-          ...message,
+        const message = {
+          type: 'message' as const,
+          content,
           timestamp: new Date().toISOString(),
-        }));
+          messageId: Date.now().toString()
+        };
+        ws.current.send(JSON.stringify(message));
+        console.log('✅ Xabar yuborildi:', content.substring(0, 50));
       } catch (error) {
-        // Silent error handling
-        setIsConnected(false);
-        setSocket(null); // Clear socket on error
-        ws.current = null; // Clear ref
-        setConnectionStatus('error');
+        console.error('❌ WebSocket send xato:', error);
+        // Don't clear connection immediately, let onclose handle it
       }
-    } else if (token && !connectionAttemptRef.current) {
-      // Try to reconnect only if not already attempting
-      connectWebSocket();
+    } else {
+      console.warn('⚠️ WebSocket is not open, attempting to reconnect...');
+      if (token && !connectionAttemptRef.current) {
+        connectWebSocket();
+      }
     }
-  }, [token, connectWebSocket]); // Removed socket from dependencies
+  }, [token, connectWebSocket]);
 
   const joinChat = useCallback((chatId: string) => {
-    if (token) {
-      sendMessage({ type: 'join_chat', chatId, token });
+    if (ws.current && ws.current.readyState === WebSocket.OPEN && token) {
+      try {
+        const message = { type: 'join_chat' as const, chatId, token };
+        ws.current.send(JSON.stringify(message));
+      } catch (error) {
+        console.error('Join chat xato:', error);
+      }
     }
-  }, [sendMessage, token]);
+  }, [token]);
 
   const leaveChat = useCallback((chatId: string) => {
-    sendMessage({ type: 'leave_chat', chatId });
-  }, [sendMessage]);
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      try {
+        const message = { type: 'leave_chat' as const, chatId };
+        ws.current.send(JSON.stringify(message));
+      } catch (error) {
+        console.error('Leave chat xato:', error);
+      }
+    }
+  }, []);
 
   const sendTyping = useCallback((chatId: string) => {
-    sendMessage({ type: 'typing', chatId });
-  }, [sendMessage]);
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      try {
+        const message = { type: 'typing' as const, chatId };
+        ws.current.send(JSON.stringify(message));
+      } catch (error) {
+        console.error('Send typing xato:', error);
+      }
+    }
+  }, []);
 
   return {
     socket,
