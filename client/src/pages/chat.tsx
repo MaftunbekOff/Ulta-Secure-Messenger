@@ -9,41 +9,10 @@ import { QuantumSafeEncryption } from "../lib/quantumSafe";
 import { SelfDestructMessages, DESTRUCT_CONFIGS } from "../lib/selfDestructMessages";
 import { securityMonitor } from "../lib/securityMonitor";
 import { toast } from "sonner"; // Assuming 'sonner' is used for toast notifications
-import { useQueryClient } from "@tanstack/react-query"; // Assuming react-query is used for data fetching
+import { useQueryClient, useQuery } from "@tanstack/react-query"; // Assuming react-query is used for data fetching
 
-// Placeholder for actual active chat data structure and getChatDisplayData function
-// In a real app, this would come from your state management or context
-const activeChat = {
-  id: "chat1",
-  name: "John Doe",
-  isGroup: false,
-  members: [],
-  avatar: "https://github.com/shadcn.png",
-  status: "Online",
-  otherUser: {
-    id: "user2",
-    username: "johndoe",
-    firstName: "John",
-    lastName: "Doe",
-    profileImageUrl: "https://github.com/shadcn.png",
-    isOnline: true,
-    lastSeen: new Date(Date.now() - 5 * 60 * 1000) // 5 minutes ago
-  }
-};
-
-const getChatDisplayData = (chat: any) => {
-  if (chat.isGroup) {
-    return { name: chat.name || "Group Chat", initials: "G", avatar: undefined };
-  } else {
-    const name = chat.name || "User";
-    const initials = name
-      .split(" ")
-      .map((n: string) => n[0])
-      .join("")
-      .substring(0, 2);
-    return { name, initials, avatar: chat.avatar, status: chat.status };
-  }
-};
+// Import auth hook to get current user
+import { useAuth } from "@/hooks/useAuth";
 
 // Mocking necessary context/state variables that are used in the `sendMessage` function
 // In a real application, these would be provided by React Context or props.
@@ -145,6 +114,13 @@ export default function Chat() {
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null); // Ref for chat container
   const [autoScroll, setAutoScroll] = useState(true); // State for auto-scroll
+  const { user } = useAuth();
+  
+  // Fetch chats to get real data
+  const { data: chats } = useQuery({
+    queryKey: ['/api/chats'],
+    enabled: !!user,
+  });
 
   // Connection status monitoring
   const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline' | 'slow'>('online');
@@ -362,8 +338,8 @@ export default function Chat() {
         {selectedChatId ? (
           <ChatWindow 
             chatId={selectedChatId} 
-            currentUserId={"user1"}
-            selectedChat={activeChat}
+            currentUserId={user?.id || "user1"}
+            selectedChat={chats?.find(chat => chat.id === selectedChatId)}
             onBack={() => setSelectedChatId(null)}
           />
         ) : (
