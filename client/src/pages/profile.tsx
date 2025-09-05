@@ -310,10 +310,24 @@ export default function Profile() {
           if (contentType && contentType.includes('application/json')) {
             const data = await response.json();
             
-            // Update profile form with new avatar URL
-            profileForm.setValue('profileImageUrl', data.profileImageUrl);
+            // Add cache-busting parameter to prevent browser caching issues
+            const avatarUrlWithCacheBust = `${data.profileImageUrl}?t=${Date.now()}`;
             
-            // Refresh user data to show new avatar everywhere
+            // Update profile form with new avatar URL
+            profileForm.setValue('profileImageUrl', avatarUrlWithCacheBust);
+            
+            // Force refresh the user data immediately to show new avatar everywhere
+            queryClient.setQueryData(["/api/auth/me"], (oldData: any) => {
+              if (oldData) {
+                return {
+                  ...oldData,
+                  profileImageUrl: avatarUrlWithCacheBust
+                };
+              }
+              return oldData;
+            });
+            
+            // Also refresh user data to ensure server sync
             await refreshUser();
             
             toast({
