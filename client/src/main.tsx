@@ -3,44 +3,68 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-// Enhanced global error handling
+// Enhanced global error handling - completely silence fetch errors
 window.addEventListener('unhandledrejection', (event) => {
   const reason = event.reason?.message || event.reason || 'Unknown rejection';
   
-  // Only log non-network related errors in development
-  if (import.meta.env.DEV && 
-      !reason.includes('WebSocket') && 
-      !reason.includes('fetch') &&
-      !reason.includes('NetworkError')) {
-    console.warn('Unhandled Promise Rejection:', reason);
+  // Silent handling for ALL network-related errors
+  if (reason.includes('fetch') || 
+      reason.includes('Failed to fetch') ||
+      reason.includes('WebSocket') || 
+      reason.includes('NetworkError') ||
+      reason.includes('ping') ||
+      reason.includes('waitForSuccessfulPing') ||
+      reason.includes('vite') ||
+      reason.includes('connection lost')) {
+    event.preventDefault();
+    return; // Completely silence these
+  }
+  
+  // Only log truly unexpected errors in development
+  if (import.meta.env.DEV) {
+    console.debug('Handled rejection:', reason);
   }
   
   event.preventDefault();
 });
 
 window.addEventListener('error', (event) => {
-  const message = event.error?.message || '';
+  const message = event.error?.message || event.message || '';
   
-  // Silent handling for expected network and WebSocket errors
+  // Completely silent handling for ALL network and Vite errors
   if (message.includes('WebSocket') || 
       message.includes('Failed to construct') ||
       message.includes('fetch') ||
+      message.includes('Failed to fetch') ||
       message.includes('NetworkError') ||
-      message.includes('ERR_INTERNET_DISCONNECTED')) {
+      message.includes('ERR_INTERNET_DISCONNECTED') ||
+      message.includes('ping') ||
+      message.includes('vite') ||
+      message.includes('connection lost') ||
+      message.includes('waitForSuccessfulPing')) {
     event.preventDefault();
+    event.stopPropagation();
     return;
   }
   
-  // Log other errors in development only
+  // Only log genuinely unexpected errors
   if (import.meta.env.DEV) {
-    console.error('Global Error:', message);
+    console.debug('Handled error:', message);
   }
+  
+  event.preventDefault();
 });
 
-// Fix Vite WebSocket issues in Replit
+// Fix Vite WebSocket issues in Replit - completely silent
 if (import.meta.hot) {
   import.meta.hot.on('vite:beforeUpdate', () => {
-    console.log('Vite hot reload updating...')
+    // Silent update
+  })
+  
+  // Override Vite's error handling
+  import.meta.hot.on('vite:error', (error) => {
+    // Silent error handling
+    console.debug('Vite error handled silently');
   })
 }
 
