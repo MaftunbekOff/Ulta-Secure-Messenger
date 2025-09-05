@@ -550,71 +550,22 @@ export default function Profile() {
                       />
                     </div>
 
-                    {/* Profile Image Upload */}
-                    <div className="space-y-4">
-                      <FormLabel>📸 Profile Avatar</FormLabel>
-                      
-                      {/* Image Preview */}
-                      <div className="flex items-center space-x-4">
-                        <Avatar 
-                          className="h-20 w-20 cursor-pointer hover:opacity-80 transition-opacity"
-                          onClick={() => fileInputRef.current?.click()}
-                        >
-                          <AvatarImage src={imagePreview || user?.profileImageUrl || undefined} />
-                          <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
-                            {user?.username?.charAt(0).toUpperCase() || "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                        
-                        <div className="flex flex-col space-y-2">
-                          <div className="flex space-x-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => fileInputRef.current?.click()}
-                              className="h-10"
-                            >
-                              <Upload className="h-4 w-4 mr-2" />
-                              Rasm yuklash
-                            </Button>
-                            
-                            {(selectedImage || imagePreview) && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={handleClearImage}
-                                className="h-10"
-                              >
-                                <X className="h-4 w-4 mr-2" />
-                                O'chirish
-                              </Button>
-                            )}
-                          </div>
-                          
-                          <p className="text-xs text-muted-foreground">
-                            JPG, PNG, GIF (Maksimal 5MB)
-                          </p>
-                        </div>
+                    {/* Hidden file input for avatar upload */}
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageSelect}
+                      accept="image/*"
+                      className="hidden"
+                      data-testid="file-input-profile-image"
+                    />
+                    
+                    {selectedImage && (
+                      <div className="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4" />
+                        ✅ {selectedImage.name} tanlandi - Avatar ustiga bosib o'zgartiring
                       </div>
-                      
-                      {/* Hidden file input */}
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleImageSelect}
-                        accept="image/*"
-                        className="hidden"
-                        data-testid="file-input-profile-image"
-                      />
-                      
-                      {selectedImage && (
-                        <div className="text-sm text-green-600 dark:text-green-400">
-                          ✅ {selectedImage.name} tanlandi
-                        </div>
-                      )}
-                    </div>
+                    )}
 
                     <Button
                       type="submit"
