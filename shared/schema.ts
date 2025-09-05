@@ -94,6 +94,162 @@ export const securityQuestions = pgTable("security_questions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// User Sessions Management
+export const userSessions = pgTable("user_sessions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  sessionToken: text("session_token").notNull().unique(),
+  deviceInfo: text("device_info"), // Browser, OS, Device name
+  deviceType: varchar("device_type", { length: 20 }), // mobile, desktop, tablet
+  ipAddress: varchar("ip_address", { length: 45 }), // IPv4/IPv6
+  location: varchar("location", { length: 255 }), // City, Country
+  userAgent: text("user_agent"),
+  isActive: boolean("is_active").default(true),
+  isCurrent: boolean("is_current").default(false), // Current session
+  loginTime: timestamp("login_time").defaultNow(),
+  lastActivity: timestamp("last_activity").defaultNow(),
+  logoutTime: timestamp("logout_time"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Login Activity & Audit Log
+export const loginActivity = pgTable("login_activity", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+  email: varchar("email", { length: 255 }), // Store email even if user not found
+  attemptType: varchar("attempt_type", { length: 20 }).notNull(), // login, logout, failed_login
+  success: boolean("success").notNull(),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  location: varchar("location", { length: 255 }),
+  deviceInfo: text("device_info"),
+  failureReason: varchar("failure_reason", { length: 100 }), // wrong_password, user_not_found, etc
+  sessionId: uuid("session_id").references(() => userSessions.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Two-Factor Authentication
+export const userTwoFactorAuth = pgTable("user_two_factor_auth", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  isEnabled: boolean("is_enabled").default(false),
+  secret: text("secret"), // TOTP secret key (encrypted)
+  backupCodes: text("backup_codes").array(), // Emergency backup codes
+  phoneNumber: varchar("phone_number", { length: 20 }), // For SMS verification
+  preferredMethod: varchar("preferred_method", { length: 20 }).default("app"), // app, sms, email
+  verifiedAt: timestamp("verified_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Security Notifications & Alerts
+export const securityNotifications = pgTable("security_notifications", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // login_alert, password_change, 2fa_enabled, etc
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  severity: varchar("severity", { length: 20 }).default("info"), // info, warning, critical
+  isRead: boolean("is_read").default(false),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  location: varchar("location", { length: 255 }),
+  deviceInfo: text("device_info"),
+  actionRequired: boolean("action_required").default(false),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Advanced Authentication (Biometric, WebAuthn)
+export const userWebAuthn = pgTable("user_webauthn", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  credentialId: text("credential_id").notNull().unique(),
+  publicKey: text("public_key").notNull(),
+  deviceName: varchar("device_name", { length: 255 }),
+  deviceType: varchar("device_type", { length: 50 }), // fingerprint, face, security_key
+  counter: bigint("counter", { mode: "number" }).default(0),
+  isActive: boolean("is_active").default(true),
+  lastUsed: timestamp("last_used"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Network Security Settings
+export const networkSecuritySettings = pgTable("network_security_settings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  allowVPN: boolean("allow_vpn").default(true),
+  blockedCountries: text("blocked_countries").array(), // ISO country codes
+  blockedIPs: text("blocked_ips").array(),
+  allowedIPs: text("allowed_ips").array(), // Whitelist
+  geoBlockingEnabled: boolean("geo_blocking_enabled").default(false),
+  vpnDetectionEnabled: boolean("vpn_detection_enabled").default(false),
+  deviceFingerprintingEnabled: boolean("device_fingerprinting_enabled").default(true),
+  rateLimitingEnabled: boolean("rate_limiting_enabled").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Chat Security Settings
+export const chatSecuritySettings = pgTable("chat_security_settings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  encryptionLevel: varchar("encryption_level", { length: 20 }).default("standard"), // basic, standard, military
+  selfDestructEnabled: boolean("self_destruct_enabled").default(false),
+  defaultSelfDestructTime: integer("default_self_destruct_time").default(0), // minutes, 0 = disabled
+  screenshotProtection: boolean("screenshot_protection").default(false),
+  incognitoModeEnabled: boolean("incognito_mode_enabled").default(false),
+  messageBackupEnabled: boolean("message_backup_enabled").default(true),
+  autoDeleteAfterDays: integer("auto_delete_after_days").default(0), // 0 = never
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Self-Destructing Messages
+export const selfDestructingMessages = pgTable("self_destructing_messages", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  messageId: uuid("message_id").references(() => messages.id, { onDelete: "cascade" }).notNull().unique(),
+  destructTime: timestamp("destruct_time").notNull(),
+  isDestroyed: boolean("is_destroyed").default(false),
+  viewCount: integer("view_count").default(0),
+  maxViews: integer("max_views").default(0), // 0 = unlimited
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Compliance & Legal Settings
+export const userComplianceSettings = pgTable("user_compliance_settings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  termsAcceptedAt: timestamp("terms_accepted_at"),
+  termsVersion: varchar("terms_version", { length: 20 }),
+  privacyPolicyAcceptedAt: timestamp("privacy_policy_accepted_at"),
+  privacyPolicyVersion: varchar("privacy_policy_version", { length: 20 }),
+  cookieConsent: boolean("cookie_consent").default(false),
+  marketingConsent: boolean("marketing_consent").default(false),
+  ageVerified: boolean("age_verified").default(false),
+  ageVerificationMethod: varchar("age_verification_method", { length: 50 }),
+  gdprCompliant: boolean("gdpr_compliant").default(true),
+  dataRetentionDays: integer("data_retention_days").default(2555), // ~7 years
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Password Security Enhancement
+export const passwordSecurity = pgTable("password_security", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  passwordHistory: text("password_history").array(), // Last 5 password hashes
+  strengthScore: integer("strength_score").default(0), // 0-100
+  lastChangeAt: timestamp("last_change_at").defaultNow(),
+  changeRequired: boolean("change_required").default(false),
+  changeRequiredReason: varchar("change_required_reason", { length: 100 }),
+  autoChangeEnabled: boolean("auto_change_enabled").default(false),
+  autoChangeDays: integer("auto_change_days").default(90),
+  breachDetected: boolean("breach_detected").default(false),
+  breachDetectedAt: timestamp("breach_detected_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   chatMembers: many(chatMembers),
@@ -340,3 +496,127 @@ export type SecurityQuestion = typeof securityQuestions.$inferSelect;
 export type InsertSecurityQuestion = z.infer<typeof insertSecurityQuestionSchema>;
 export type CreateSecurityQuestion = z.infer<typeof createSecurityQuestionSchema>;
 export type UpdateSecurityQuestion = z.infer<typeof updateSecurityQuestionSchema>;
+
+// Advanced Security Types
+export type UserSession = typeof userSessions.$inferSelect;
+export type LoginActivity = typeof loginActivity.$inferSelect;
+export type UserTwoFactorAuth = typeof userTwoFactorAuth.$inferSelect;
+export type SecurityNotification = typeof securityNotifications.$inferSelect;
+export type UserWebAuthn = typeof userWebAuthn.$inferSelect;
+export type NetworkSecuritySettings = typeof networkSecuritySettings.$inferSelect;
+export type ChatSecuritySettings = typeof chatSecuritySettings.$inferSelect;
+export type SelfDestructingMessage = typeof selfDestructingMessages.$inferSelect;
+export type UserComplianceSettings = typeof userComplianceSettings.$inferSelect;
+export type PasswordSecurity = typeof passwordSecurity.$inferSelect;
+
+// Insert schemas for new security tables
+export const insertUserSessionSchema = createInsertSchema(userSessions, {
+  id: true,
+  createdAt: true,
+  loginTime: true,
+  lastActivity: true,
+  logoutTime: true,
+});
+
+export const insertLoginActivitySchema = createInsertSchema(loginActivity, {
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserTwoFactorAuthSchema = createInsertSchema(userTwoFactorAuth, {
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  verifiedAt: true,
+});
+
+export const insertSecurityNotificationSchema = createInsertSchema(securityNotifications, {
+  id: true,
+  createdAt: true,
+  expiresAt: true,
+});
+
+export const insertUserWebAuthnSchema = createInsertSchema(userWebAuthn, {
+  id: true,
+  createdAt: true,
+  lastUsed: true,
+});
+
+export const insertNetworkSecuritySettingsSchema = createInsertSchema(networkSecuritySettings, {
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertChatSecuritySettingsSchema = createInsertSchema(chatSecuritySettings, {
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSelfDestructingMessageSchema = createInsertSchema(selfDestructingMessages, {
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserComplianceSettingsSchema = createInsertSchema(userComplianceSettings, {
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  termsAcceptedAt: true,
+  privacyPolicyAcceptedAt: true,
+});
+
+export const insertPasswordSecuritySchema = createInsertSchema(passwordSecurity, {
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastChangeAt: true,
+  breachDetectedAt: true,
+});
+
+// Update schemas for settings - using z.object().partial() instead
+export const updateNetworkSecuritySettingsSchema = z.object({
+  allowVPN: z.boolean().optional(),
+  blockedCountries: z.array(z.string()).optional(),
+  blockedIPs: z.array(z.string()).optional(),
+  allowedIPs: z.array(z.string()).optional(),
+  geoBlockingEnabled: z.boolean().optional(),
+  vpnDetectionEnabled: z.boolean().optional(),
+  deviceFingerprintingEnabled: z.boolean().optional(),
+  rateLimitingEnabled: z.boolean().optional(),
+});
+
+export const updateChatSecuritySettingsSchema = z.object({
+  encryptionLevel: z.enum(["basic", "standard", "military"]).optional(),
+  selfDestructEnabled: z.boolean().optional(),
+  defaultSelfDestructTime: z.number().optional(),
+  screenshotProtection: z.boolean().optional(),
+  incognitoModeEnabled: z.boolean().optional(),
+  messageBackupEnabled: z.boolean().optional(),
+  autoDeleteAfterDays: z.number().optional(),
+});
+
+export const updateUserComplianceSettingsSchema = z.object({
+  cookieConsent: z.boolean().optional(),
+  marketingConsent: z.boolean().optional(),
+  ageVerified: z.boolean().optional(),
+  ageVerificationMethod: z.string().optional(),
+  gdprCompliant: z.boolean().optional(),
+  dataRetentionDays: z.number().optional(),
+});
+
+export const updatePasswordSecuritySchema = z.object({
+  strengthScore: z.number().optional(),
+  changeRequired: z.boolean().optional(),
+  changeRequiredReason: z.string().optional(),
+  autoChangeEnabled: z.boolean().optional(),
+  autoChangeDays: z.number().optional(),
+  breachDetected: z.boolean().optional(),
+});
+
+export const updateUserTwoFactorAuthSchema = z.object({
+  isEnabled: z.boolean().optional(),
+  phoneNumber: z.string().optional(),
+  preferredMethod: z.enum(["app", "sms", "email"]).optional(),
+});

@@ -13,6 +13,16 @@ import {
   type SecurityQuestion,
   type CreateSecurityQuestion,
   type UpdateSecurityQuestion,
+  type UserSession,
+  type LoginActivity,
+  type UserTwoFactorAuth,
+  type SecurityNotification,
+  type UserWebAuthn,
+  type NetworkSecuritySettings,
+  type ChatSecuritySettings,
+  type SelfDestructingMessage,
+  type UserComplianceSettings,
+  type PasswordSecurity,
   users,
   chats,
   chatMembers,
@@ -21,6 +31,16 @@ import {
   passwordResetTokens,
   userSecuritySettings,
   securityQuestions,
+  userSessions,
+  loginActivity,
+  userTwoFactorAuth,
+  securityNotifications,
+  userWebAuthn,
+  networkSecuritySettings,
+  chatSecuritySettings,
+  selfDestructingMessages,
+  userComplianceSettings,
+  passwordSecurity,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sql, ne } from "drizzle-orm";
@@ -85,6 +105,54 @@ export interface IStorage {
   updateSecurityQuestion(questionId: string, updates: UpdateSecurityQuestion): Promise<SecurityQuestion | undefined>;
   deleteSecurityQuestion(questionId: string): Promise<void>;
   verifySecurityAnswer(questionId: string, answer: string): Promise<boolean>;
+
+  // Sessions Management
+  createUserSession(userId: string, sessionData: any): Promise<any>;
+  getUserSessions(userId: string): Promise<any[]>;
+  terminateSession(sessionId: string): Promise<void>;
+  terminateAllSessions(userId: string, exceptSessionId?: string): Promise<void>;
+  updateSessionActivity(sessionId: string): Promise<void>;
+
+  // Login Activity & Audit Log
+  recordLoginActivity(activity: any): Promise<any>;
+  getUserLoginActivity(userId: string, limit?: number): Promise<any[]>;
+  getFailedLoginAttempts(email: string, timeWindow?: number): Promise<number>;
+
+  // Two-Factor Authentication
+  getUserTwoFactorAuth(userId: string): Promise<any | undefined>;
+  createOrUpdateTwoFactorAuth(userId: string, data: any): Promise<any>;
+  verifyTwoFactorCode(userId: string, code: string): Promise<boolean>;
+  generateBackupCodes(userId: string): Promise<string[]>;
+
+  // Security Notifications
+  createSecurityNotification(userId: string, notification: any): Promise<any>;
+  getUserSecurityNotifications(userId: string, unreadOnly?: boolean): Promise<any[]>;
+  markNotificationAsRead(notificationId: string): Promise<void>;
+
+  // Advanced Authentication (WebAuthn)
+  createWebAuthnCredential(userId: string, credential: any): Promise<any>;
+  getUserWebAuthnCredentials(userId: string): Promise<any[]>;
+  verifyWebAuthnCredential(credentialId: string, authData: any): Promise<boolean>;
+
+  // Network Security Settings
+  getUserNetworkSecuritySettings(userId: string): Promise<any | undefined>;
+  updateNetworkSecuritySettings(userId: string, settings: any): Promise<any>;
+  checkIPAccess(userId: string, ipAddress: string): Promise<boolean>;
+
+  // Chat Security Settings
+  getUserChatSecuritySettings(userId: string): Promise<any | undefined>;
+  updateChatSecuritySettings(userId: string, settings: any): Promise<any>;
+  createSelfDestructingMessage(messageId: string, destructTime: Date): Promise<any>;
+
+  // Compliance & Legal
+  getUserComplianceSettings(userId: string): Promise<any | undefined>;
+  updateComplianceSettings(userId: string, settings: any): Promise<any>;
+  recordTermsAcceptance(userId: string, version: string): Promise<void>;
+
+  // Password Security
+  getUserPasswordSecurity(userId: string): Promise<any | undefined>;
+  updatePasswordSecurity(userId: string, data: any): Promise<any>;
+  checkPasswordHistory(userId: string, newPasswordHash: string): Promise<boolean>;
 }
 
 export class MemoryStorage implements IStorage {
