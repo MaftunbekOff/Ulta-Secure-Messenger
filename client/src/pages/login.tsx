@@ -309,46 +309,31 @@ export default function Login() {
                         <Input
                           type="text"
                           placeholder="DD/MM/YYYY (masalan: 15/01/1990)"
-                          value={field.value || ''}
+                          {...field}
                           onChange={(e) => {
-                            const inputValue = e.target.value;
-                            console.log('🗓️ Kiritilgan qiymat:', inputValue);
+                            let value = e.target.value;
                             
-                            // Agar input bo'sh bo'lsa, bo'sh string qaytarish
-                            if (inputValue === '') {
-                              console.log('🗓️ Bo\'sh qiymat');
-                              field.onChange('');
-                              return;
+                            // Faqat raqam va / belgilarini qoldirish
+                            value = value.replace(/[^\d/]/g, '');
+                            
+                            // Raqamlarni ajratib olish
+                            const digits = value.replace(/\D/g, '');
+                            
+                            // Maksimal 8 ta raqam
+                            if (digits.length <= 8) {
+                              let formatted = digits;
+                              
+                              // Avtomatik formatlash
+                              if (digits.length >= 3) {
+                                formatted = digits.slice(0, 2) + '/' + digits.slice(2);
+                              }
+                              if (digits.length >= 5) {
+                                formatted = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
+                              }
+                              
+                              field.onChange(formatted);
                             }
-                            
-                            // Faqat raqamlarni olish
-                            let digitsOnly = inputValue.replace(/[^\d]/g, '');
-                            console.log('🗓️ Faqat raqamlar:', digitsOnly);
-                            
-                            // Maksimal 8 ta raqamga cheklash (DDMMYYYY)
-                            if (digitsOnly.length > 8) {
-                              digitsOnly = digitsOnly.slice(0, 8);
-                            }
-                            
-                            // DD/MM/YYYY formatida formatlash
-                            let formattedValue = digitsOnly;
-                            
-                            // Agar 2 yoki undan ko'p raqam bo'lsa, birinchi slash qo'shish
-                            if (digitsOnly.length >= 3) {
-                              formattedValue = digitsOnly.slice(0, 2) + '/' + digitsOnly.slice(2);
-                            }
-                            
-                            // Agar 4 yoki undan ko'p raqam bo'lsa, ikkinchi slash qo'shish
-                            if (digitsOnly.length >= 5) {
-                              formattedValue = digitsOnly.slice(0, 2) + '/' + digitsOnly.slice(2, 4) + '/' + digitsOnly.slice(4);
-                            }
-                            
-                            console.log('🗓️ Formatlangan qiymat:', formattedValue);
-                            field.onChange(formattedValue);
                           }}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
                           data-testid="input-birth-date"
                           className="h-12 text-base"
                           autoComplete="bday"
