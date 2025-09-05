@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, Settings, Camera, Save, Lock, ArrowLeft, Upload, ImageIcon, X } from "lucide-react";
+import { User, Settings, Camera, Save, Lock, ArrowLeft, Upload, ImageIcon, X, RotateCw, ZoomIn, ZoomOut, Move } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,12 +11,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { getAuthHeaders } from "@/lib/authUtils";
 import { updateProfileSchema, changePasswordSchema, type UpdateProfileData, type ChangePasswordData } from "@shared/schema";
 import { useLocation } from "wouter";
-import { useCallback, useRef } from "react";
 import { apiRequest } from "@/lib/queryClient";
 
 // Country codes data
@@ -58,7 +58,16 @@ export default function Profile() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [isEditingImage, setIsEditingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // Image editing states
+  const [imageScale, setImageScale] = useState(1);
+  const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   // Debounced username availability check
   const checkUsernameAvailability = useCallback(
@@ -121,10 +130,17 @@ export default function Profile() {
 
       setSelectedImage(file);
       
-      // Create preview
+      // Create preview and start editing
       const reader = new FileReader();
       reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
+        const result = e.target?.result as string;
+        setOriginalImage(result);
+        setImagePreview(result);
+        setIsEditingImage(true);
+        
+        // Reset editing states
+        setImageScale(1);
+        setImagePosition({ x: 0, y: 0 });
       };
       reader.readAsDataURL(file);
     }
@@ -134,10 +150,169 @@ export default function Profile() {
   const handleClearImage = () => {
     setSelectedImage(null);
     setImagePreview(null);
+    setOriginalImage(null);
+    setIsEditingImage(false);
+    setImageScale(1);
+    setImagePosition({ x: 0, y: 0 });
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
+
+  // Image editing functions
+  const drawImageOnCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    const img = new Image();
+    if (!canvas || !originalImage) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    img.onload = () => {
+      const size = 300; // Canvas size for editing
+      canvas.width = size;
+      canvas.height = size;
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, size, size);
+      
+      // Calculate image dimensions
+      const imgAspect = img.width / img.height;
+      let imgWidth = size * imageScale;
+      let imgHeight = size * imageScale;
+      
+      if (imgAspect > 1) {
+        imgHeight = imgWidth / imgAspect;
+      } else {
+        imgWidth = imgHeight * imgAspect;
+      }
+      
+      // Draw image with current position and scale
+      const x = (size / 2) + imagePosition.x - (imgWidth / 2);
+      const y = (size / 2) + imagePosition.y - (imgHeight / 2);
+      
+      ctx.drawImage(img, x, y, imgWidth, imgHeight);
+      
+      // Draw circle overlay for cropping preview
+      ctx.globalCompositeOperation = 'destination-in';
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size / 2, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+    };
+    
+    img.src = originalImage;
+  }, [originalImage, imageScale, imagePosition]);
+
+  // Generate final cropped image
+  const generateCroppedImage = useCallback((): Promise<Blob> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      if (!ctx || !originalImage) return;
+      
+      img.onload = () => {
+        const finalSize = 200; // Final avatar size
+        canvas.width = finalSize;
+        canvas.height = finalSize;
+        
+        // Calculate scaled dimensions
+        const imgAspect = img.width / img.height;
+        let imgWidth = finalSize * imageScale;
+        let imgHeight = finalSize * imageScale;
+        
+        if (imgAspect > 1) {
+          imgHeight = imgWidth / imgAspect;
+        } else {
+          imgWidth = imgHeight * imgAspect;
+        }
+        
+        // Draw and crop
+        const x = (finalSize / 2) + (imagePosition.x * finalSize / 300) - (imgWidth / 2);
+        const y = (finalSize / 2) + (imagePosition.y * finalSize / 300) - (imgHeight / 2);
+        
+        ctx.drawImage(img, x, y, imgWidth, imgHeight);
+        
+        // Create circular mask
+        ctx.globalCompositeOperation = 'destination-in';
+        ctx.beginPath();
+        ctx.arc(finalSize / 2, finalSize / 2, finalSize / 2, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+        }, 'image/jpeg', 0.9);
+      };
+      
+      img.src = originalImage;
+    });
+  }, [originalImage, imageScale, imagePosition]);
+
+  // Image editing event handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - imagePosition.x, y: e.clientY - imagePosition.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setImagePosition({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleZoomIn = () => {
+    setImageScale(prev => Math.min(prev + 0.1, 3));
+  };
+
+  const handleZoomOut = () => {
+    setImageScale(prev => Math.max(prev - 0.1, 0.5));
+  };
+
+  const handleSaveEditedImage = async () => {
+    try {
+      const croppedBlob = await generateCroppedImage();
+      const croppedFile = new File([croppedBlob], selectedImage?.name || 'avatar.jpg', {
+        type: 'image/jpeg'
+      });
+      
+      // Update states
+      setSelectedImage(croppedFile);
+      setImagePreview(URL.createObjectURL(croppedBlob));
+      setIsEditingImage(false);
+      
+      toast({
+        title: "Rasm tayyorlandi",
+        description: "Avatar uchun rasm muvaffaqiyatli tayyorlandi"
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Xatolik",
+        description: "Rasmni tayyorlashda xatolik yuz berdi"
+      });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingImage(false);
+    setImageScale(1);
+    setImagePosition({ x: 0, y: 0 });
+  };
+
+  // Draw image on canvas when editing
+  useEffect(() => {
+    if (isEditingImage && originalImage) {
+      drawImageOnCanvas();
+    }
+  }, [isEditingImage, originalImage, imageScale, imagePosition, drawImageOnCanvas]);
 
   const profileForm = useForm<UpdateProfileData>({
     resolver: zodResolver(updateProfileSchema),
@@ -672,6 +847,105 @@ export default function Profile() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Image Editing Dialog */}
+      <Dialog open={isEditingImage} onOpenChange={setIsEditingImage}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Camera className="h-5 w-5" />
+              📸 Rasmni tahrirlash
+            </DialogTitle>
+            <DialogDescription>
+              Rasmni avatar uchun moslashtiring. Sichqoncha bilan tortib, zoom tugmalari bilan kattalashtiring.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Canvas for image editing */}
+            <div className="flex justify-center">
+              <div className="relative">
+                <canvas
+                  ref={canvasRef}
+                  width={300}
+                  height={300}
+                  className="border-2 border-dashed border-gray-300 rounded-full cursor-move"
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                />
+                <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+                  {Math.round(imageScale * 100)}%
+                </div>
+              </div>
+            </div>
+
+            {/* Editing Controls */}
+            <div className="flex justify-center items-center gap-4">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleZoomOut}
+                disabled={imageScale <= 0.5}
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              
+              <div className="text-sm text-muted-foreground min-w-16 text-center">
+                {Math.round(imageScale * 100)}%
+              </div>
+              
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleZoomIn}
+                disabled={imageScale >= 3}
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+              
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setImageScale(1);
+                  setImagePosition({ x: 0, y: 0 });
+                }}
+              >
+                <RotateCw className="h-4 w-4 mr-2" />
+                Reset
+              </Button>
+            </div>
+
+            <div className="text-center text-sm text-muted-foreground">
+              💡 <strong>Maslahat:</strong> Rasmni sichqoncha bilan tortib, o'rnini o'zgaritiring. Zoom tugmalari bilan kattalashtiring.
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancelEdit}
+            >
+              <X className="h-4 w-4 mr-2" />
+              Bekor qilish
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveEditedImage}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Saqlash
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
