@@ -49,7 +49,6 @@ export default function Login() {
       password: "",
       firstName: "",
       lastName: "",
-      birthDate: "",
     },
     mode: "onChange",
     shouldFocusError: true,
@@ -63,7 +62,6 @@ export default function Login() {
       firstName: watchedValues.firstName || 'Bo\'sh',
       lastName: watchedValues.lastName || 'Bo\'sh',
       email: watchedValues.email || 'Bo\'sh',
-      birthDate: watchedValues.birthDate || 'Bo\'sh',
       password: watchedValues.password ? `${watchedValues.password.length} ta belgi` : 'Bo\'sh',
       formValid: registerForm.formState.isValid ? 'Ha' : 'Yo\'q',
       errors: Object.keys(registerForm.formState.errors).length > 0 ?
@@ -99,7 +97,6 @@ export default function Login() {
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
-      birthDate: data.birthDate,
       password: data.password ? '****** (yashirin)' : 'Bo\'sh',
       passwordLength: data.password?.length || 0
     });
@@ -317,6 +314,17 @@ export default function Login() {
                     </FormItem>
                   )}
                 />
+
+                <div className="space-y-2">
+                  <Label htmlFor="empty-input">Bo'sh maydon</Label>
+                  <Input
+                    id="empty-input"
+                    type="text"
+                    placeholder="Bu yerga hech narsa kiritmang"
+                    className="h-12 text-base"
+                    data-testid="input-empty"
+                  />
+                </div>
 
                 <FormField
                   control={registerForm.control}
