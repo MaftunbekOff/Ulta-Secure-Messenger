@@ -518,7 +518,7 @@ export default function Profile() {
 
                     <Button
                       type="submit"
-                      disabled={updateProfileMutation.isPending}
+                      disabled={updateProfileMutation.isPending || !!usernameValidationMessage}
                       data-testid="button-update-profile"
                       className="h-12 text-base"
                     >
