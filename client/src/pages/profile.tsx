@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, Settings, Camera, Save, Lock, ArrowLeft } from "lucide-react";
+import { User, Settings, Camera, Save, Lock, ArrowLeft, Upload, ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,6 +56,9 @@ export default function Profile() {
   const [usernameValidationMessage, setUsernameValidationMessage] = useState("");
   const [usernameAvailabilityMessage, setUsernameAvailabilityMessage] = useState("");
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Debounced username availability check
   const checkUsernameAvailability = useCallback(
@@ -93,6 +96,48 @@ export default function Profile() {
     },
     []
   );
+
+  // Handle image file selection
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+          title: "Fayl juda katta",
+          description: "Rasm hajmi 5MB dan oshmasligi kerak",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Noto'g'ri fayl turi",
+          description: "Faqat rasm fayllari ruxsat etilgan",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setSelectedImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Clear selected image
+  const handleClearImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const profileForm = useForm<UpdateProfileData>({
     resolver: zodResolver(updateProfileSchema),
@@ -502,25 +547,68 @@ export default function Profile() {
                       />
                     </div>
 
-                    <FormField
-                      control={profileForm.control}
-                      name="profileImageUrl"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Profile Image URL</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="url"
-                              placeholder="https://example.com/avatar.jpg"
-                              {...field}
-                              data-testid="input-profile-image"
-                              className="h-12 text-base"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                    {/* Profile Image Upload */}
+                    <div className="space-y-4">
+                      <FormLabel>📸 Profile Avatar</FormLabel>
+                      
+                      {/* Image Preview */}
+                      <div className="flex items-center space-x-4">
+                        <Avatar className="h-20 w-20">
+                          <AvatarImage src={imagePreview || user?.profileImageUrl || undefined} />
+                          <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
+                            {user?.username?.charAt(0).toUpperCase() || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        
+                        <div className="flex flex-col space-y-2">
+                          <div className="flex space-x-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="h-10"
+                            >
+                              <Upload className="h-4 w-4 mr-2" />
+                              Rasm yuklash
+                            </Button>
+                            
+                            {(selectedImage || imagePreview) && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleClearImage}
+                                className="h-10"
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                O'chirish
+                              </Button>
+                            )}
+                          </div>
+                          
+                          <p className="text-xs text-muted-foreground">
+                            JPG, PNG, GIF (Maksimal 5MB)
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Hidden file input */}
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleImageSelect}
+                        accept="image/*"
+                        className="hidden"
+                        data-testid="file-input-profile-image"
+                      />
+                      
+                      {selectedImage && (
+                        <div className="text-sm text-green-600 dark:text-green-400">
+                          ✅ {selectedImage.name} tanlandi
+                        </div>
                       )}
-                    />
+                    </div>
 
                     <Button
                       type="submit"
