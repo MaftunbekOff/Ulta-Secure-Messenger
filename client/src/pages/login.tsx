@@ -307,15 +307,45 @@ export default function Login() {
                       <FormLabel>📅 Tug'ilgan sana</FormLabel>
                       <FormControl>
                         <Input
-                          type="date"
+                          type="text"
+                          placeholder="DD/MM/YYYY (masalan: 15/01/1990)"
                           value={field.value || ''}
-                          onChange={field.onChange}
+                          onChange={(e) => {
+                            let inputValue = e.target.value;
+                            console.log('🗓️ Kiritilgan qiymat:', inputValue);
+                            
+                            // Faqat raqam va / belgilariga ruxsat berish
+                            let digitsOnly = inputValue.replace(/[^\d]/g, '');
+                            console.log('🗓️ Faqat raqamlar:', digitsOnly);
+                            
+                            // Maksimal 8 ta raqam (DDMMYYYY)
+                            digitsOnly = digitsOnly.slice(0, 8);
+                            
+                            // DD/MM/YYYY formatida formatlash
+                            let formattedValue = '';
+                            if (digitsOnly.length > 0) {
+                              // Kun qo'shish (DD)
+                              formattedValue = digitsOnly.slice(0, 2);
+                              if (digitsOnly.length > 2) {
+                                // Oy qo'shish (/MM)
+                                formattedValue += '/' + digitsOnly.slice(2, 4);
+                                if (digitsOnly.length > 4) {
+                                  // Yil qo'shish (/YYYY)
+                                  formattedValue += '/' + digitsOnly.slice(4, 8);
+                                }
+                              }
+                            }
+                            
+                            console.log('🗓️ Formatlangan qiymat:', formattedValue);
+                            field.onChange(formattedValue);
+                          }}
                           onBlur={field.onBlur}
                           name={field.name}
                           ref={field.ref}
                           data-testid="input-birth-date"
                           className="h-12 text-base"
                           autoComplete="bday"
+                          maxLength={10}
                         />
                       </FormControl>
                       <FormMessage />
