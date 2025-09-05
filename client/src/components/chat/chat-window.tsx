@@ -59,7 +59,7 @@ export default function ChatWindow({
     sendMessage, 
     lastMessage,
     connectionStatus 
-  } = useWebSocket(getWebSocketUrl());
+  } = useWebSocket();
 
   // ESC tugmasi bilan ortga qaytish
   useEffect(() => {
@@ -351,7 +351,11 @@ export default function ChatWindow({
               messages.map((message) => (
                 <MessageBubble
                   key={message.id}
-                  message={message}
+                  message={{
+                    ...message,
+                    senderId: message.userId,
+                    timestamp: typeof message.timestamp === 'number' ? message.timestamp : message.timestamp.getTime()
+                  }}
                   isOwn={message.userId === currentUserId}
                   senderName={message.userId === 'system' ? 'System' : `User ${message.userId}`}
                   senderId={message.userId}

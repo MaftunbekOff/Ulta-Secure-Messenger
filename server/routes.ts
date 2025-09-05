@@ -246,17 +246,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isOnline: user.isOnline,
       };
 
-      // Set all headers at once
-      res.set({
-        'Cache-Control': 'private, max-age=300',
-        'X-Content-Type-Options': 'nosniff',
-        'Content-Type': 'application/json',
-        'Connection': 'keep-alive',
-        'X-Response-Time': `${responseTime}ms`,
-        'X-Performance': responseTime < 50 ? 'ULTRA_FAST' : responseTime < 200 ? 'FAST' : 'SLOW'
-      });
+      // Check if response already sent before setting headers
+      if (!res.headersSent) {
+        // Set all headers at once
+        res.set({
+          'Cache-Control': 'private, max-age=300',
+          'X-Content-Type-Options': 'nosniff',
+          'Content-Type': 'application/json',
+          'Connection': 'keep-alive',
+          'X-Response-Time': `${responseTime}ms`,
+          'X-Performance': responseTime < 50 ? 'ULTRA_FAST' : responseTime < 200 ? 'FAST' : 'SLOW'
+        });
 
-      res.json(response);
+        res.json(response);
+      }
     } catch (error) {
       clearTimeout(timeout);
       const responseTime = Date.now() - startTime;

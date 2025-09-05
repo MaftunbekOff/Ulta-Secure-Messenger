@@ -342,7 +342,7 @@ export class DatabaseStorage implements IStorage {
   private userCache = new Map<string, { user: User, timestamp: number }>();
   private readonly USER_CACHE_TTL = 60000; // 60 seconds
 
-  async getUser(userId: string): Promise<User | null> {
+  async getUser(userId: string): Promise<User | undefined> {
     try {
       // Check cache first for sub-millisecond response
       const cached = this.userCache.get(userId);
@@ -363,6 +363,8 @@ export class DatabaseStorage implements IStorage {
           passwordHash: users.passwordHash,
           publicKey: users.publicKey,
           createdAt: users.createdAt,
+          lastSeen: users.lastSeen,
+          updatedAt: users.updatedAt,
         })
         .from(users)
         .where(eq(users.id, userId))
@@ -375,7 +377,7 @@ export class DatabaseStorage implements IStorage {
         // Cleanup old cache entries
         if (this.userCache.size > 1000) {
           const now = Date.now();
-          for (const [key, value] of this.userCache.entries()) {
+          for (const [key, value] of Array.from(this.userCache.entries())) {
             if (now - value.timestamp > this.USER_CACHE_TTL) {
               this.userCache.delete(key);
             }
@@ -383,10 +385,10 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      return user || null;
+      return user || undefined;
     } catch (error) {
       console.error('Error fetching user:', error);
-      return null;
+      return undefined;
     }
   }
 
@@ -510,6 +512,7 @@ export class DatabaseStorage implements IStorage {
 
         return {
           ...chat,
+          updatedAt: chat.updatedAt || chat.createdAt || new Date(), // Ensure updatedAt exists
           lastMessage: undefined, // Skip last message for now to improve speed
           unreadCount: 0, // Simplified
           otherUser,
@@ -619,7 +622,14 @@ export class DatabaseStorage implements IStorage {
             username: users.username,
             firstName: users.firstName,
             lastName: users.lastName,
-            profileImageUrl: users.profileImageUrl
+            profileImageUrl: users.profileImageUrl,
+            email: users.email,
+            passwordHash: users.passwordHash,
+            publicKey: users.publicKey,
+            isOnline: users.isOnline,
+            lastSeen: users.lastSeen,
+            createdAt: users.createdAt,
+            updatedAt: users.updatedAt
           }
         })
         .from(messages)
