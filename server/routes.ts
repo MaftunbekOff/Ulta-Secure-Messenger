@@ -8,7 +8,19 @@ import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
 import { storage } from "./storage";
-import { loginSchema, registerSchema, insertMessageSchema, updateProfileSchema, changePasswordSchema, forgotPasswordSchema, resetPasswordSchema } from "@shared/schema";
+import { 
+  loginSchema, 
+  registerSchema, 
+  insertMessageSchema, 
+  updateProfileSchema, 
+  changePasswordSchema, 
+  forgotPasswordSchema, 
+  resetPasswordSchema,
+  updateSecuritySettingsSchema,
+  createSecurityQuestionSchema,
+  updateSecurityQuestionSchema,
+  enhancedForgotPasswordSchema
+} from "@shared/schema";
 import { generateKeyPair, encrypt as militaryEncrypt, decrypt as militaryDecrypt } from "./militaryEncryption";
 import { parse } from "url";
 
@@ -290,6 +302,342 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Parol muvaffaqiyatli o'zgartirildi" });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Parolni o'zgartirishda xatolik" });
+    }
+  });
+
+  // Security settings endpoints
+  app.get('/api/user/security-settings', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const settings = await storage.getUserSecuritySettings(req.userId!);
+      if (!settings) {
+        // Return default settings if none exist
+        return res.json({
+          requireUsernameForReset: false,
+          requireSecurityQuestions: false,
+          requireLastActivity: false,
+          twoFactorEnabled: false,
+        });
+      }
+      res.json(settings);
+    } catch (error: any) {
+      res.status(500).json({ message: "Xavfsizlik sozlamalarini olishda xatolik" });
+    }
+  });
+
+  app.put('/api/user/security-settings', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const settings = updateSecuritySettingsSchema.parse(req.body);
+      const updatedSettings = await storage.createOrUpdateSecuritySettings(req.userId!, settings);
+      res.json(updatedSettings);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Xavfsizlik sozlamalarini yangilashda xatolik" });
+    }
+  });
+
+  // Security questions endpoints
+  app.get('/api/user/security-questions', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const questions = await storage.getUserSecurityQuestions(req.userId!);
+      // Don't return answer hashes for security
+      const safeQuestions = questions.map(q => ({
+        id: q.id,
+        question: q.question,
+        createdAt: q.createdAt,
+        updatedAt: q.updatedAt,
+      }));
+      res.json(safeQuestions);
+    } catch (error: any) {
+      res.status(500).json({ message: "Xavfsizlik savollarini olishda xatolik" });
+    }
+  });
+
+  app.post('/api/user/security-questions', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const questionData = createSecurityQuestionSchema.parse(req.body);
+      const newQuestion = await storage.createSecurityQuestion(req.userId!, questionData);
+      
+      // Return without answer hash
+      const safeQuestion = {
+        id: newQuestion.id,
+        question: newQuestion.question,
+        createdAt: newQuestion.createdAt,
+        updatedAt: newQuestion.updatedAt,
+      };
+      
+      res.json(safeQuestion);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Xavfsizlik savolini yaratishda xatolik" });
+    }
+  });
+
+  app.put('/api/user/security-questions/:id', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const questionId = req.params.id;
+      const updates = updateSecurityQuestionSchema.parse(req.body);
+      const updatedQuestion = await storage.updateSecurityQuestion(questionId, updates);
+      
+      if (!updatedQuestion) {
+        return res.status(404).json({ message: "Savol topilmadi" });
+      }
+
+      // Return without answer hash
+      const safeQuestion = {
+        id: updatedQuestion.id,
+        question: updatedQuestion.question,
+        createdAt: updatedQuestion.createdAt,
+        updatedAt: updatedQuestion.updatedAt,
+      };
+      
+      res.json(safeQuestion);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Xavfsizlik savolini yangilashda xatolik" });
+    }
+  });
+
+  app.delete('/api/user/security-questions/:id', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const questionId = req.params.id;
+      await storage.deleteSecurityQuestion(questionId);
+      res.json({ message: "Savol muvaffaqiyatli o'chirildi" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Savolni o'chirishda xatolik" });
+    }
+  });
+
+  // Multi-step forgot password verification endpoints
+  
+  // Step 1: Email verification
+  app.post('/api/auth/forgot-password/verify-email', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email manzil kiritish shart" });
+      }
+
+      // Check if user exists
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        // Don't reveal whether user exists for security
+        return res.json({ 
+          message: "Email tekshirildi. Agar email mavjud bo'lsa, qo'shimcha tekshiruv talab qilinadi.",
+          requiresAdditionalVerification: false
+        });
+      }
+
+      // Get user's security settings
+      const securitySettings = await storage.getUserSecuritySettings(user.id);
+      
+      // Check if additional verification is required
+      const requiresVerification = securitySettings?.requireUsernameForReset || 
+                                   securitySettings?.requireSecurityQuestions ||
+                                   securitySettings?.requireLastActivity;
+
+      if (!requiresVerification) {
+        // Generate reset token directly
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 3600000); // 1 hour
+        await storage.createPasswordResetToken(email, resetToken, expiresAt);
+
+        console.log(`🔑 Direct reset token for ${email}: ${resetToken}`);
+        
+        return res.json({ 
+          message: "Parolni tiklash ko'rsatmalari email manzilingizga yuborildi",
+          requiresAdditionalVerification: false,
+          resetToken: resetToken // DEVELOPMENT ONLY
+        });
+      }
+
+      res.json({ 
+        message: "Email tasdiqlandi. Qo'shimcha xavfsizlik tekshiruvi talab qilinadi.",
+        requiresAdditionalVerification: true
+      });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Email tekshirishda xatolik" });
+    }
+  });
+
+  // Step 2: Account verification 
+  app.post('/api/auth/forgot-password/verify-account', async (req, res) => {
+    try {
+      const { email, username, birthDate } = req.body;
+      
+      if (!email || !username) {
+        return res.status(400).json({ message: "Email va username kiritish shart" });
+      }
+
+      // Get user
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(400).json({ message: "Ma'lumotlar noto'g'ri" });
+      }
+
+      // Get security settings
+      const securitySettings = await storage.getUserSecuritySettings(user.id);
+      
+      // Verify username if required
+      if (securitySettings?.requireUsernameForReset && username !== user.username) {
+        return res.status(400).json({ message: "Username noto'g'ri" });
+      }
+
+      // Verify birth date if provided and user has one
+      if (birthDate && user.birthDate && birthDate !== user.birthDate) {
+        return res.status(400).json({ message: "Tug'ilgan sana noto'g'ri" });
+      }
+
+      // Check if security questions are required
+      if (securitySettings?.requireSecurityQuestions) {
+        const userQuestions = await storage.getUserSecurityQuestions(user.id);
+        
+        if (userQuestions.length > 0) {
+          // Return questions (without answers)
+          const questionsList = userQuestions.map(q => ({
+            id: q.id,
+            question: q.question
+          }));
+
+          return res.json({ 
+            message: "Account ma'lumotlari tasdiqlandi. Xavfsizlik savollariga javob bering.",
+            requiresSecurityQuestions: true,
+            securityQuestions: questionsList
+          });
+        }
+      }
+
+      // Account verified, generate reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 3600000); // 1 hour
+      await storage.createPasswordResetToken(email, resetToken, expiresAt);
+
+      console.log(`🔑 Account verified reset token for ${email}: ${resetToken}`);
+      
+      res.json({ 
+        message: "Account tasdiqlandi. Reset token email manzilingizga yuborildi.",
+        requiresSecurityQuestions: false,
+        resetToken: resetToken // DEVELOPMENT ONLY
+      });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Account tekshirishda xatolik" });
+    }
+  });
+
+  // Step 3: Security questions verification
+  app.post('/api/auth/forgot-password/verify-security', async (req, res) => {
+    try {
+      const { email, answers } = req.body;
+      
+      if (!email || !answers || !Array.isArray(answers)) {
+        return res.status(400).json({ message: "Email va javoblar kiritish shart" });
+      }
+
+      // Get user
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(400).json({ message: "Ma'lumotlar noto'g'ri" });
+      }
+
+      // Get user's security questions
+      const userQuestions = await storage.getUserSecurityQuestions(user.id);
+      
+      if (userQuestions.length === 0) {
+        return res.status(400).json({ message: "Xavfsizlik savollari topilmadi" });
+      }
+
+      if (answers.length !== userQuestions.length) {
+        return res.status(400).json({ message: "Barcha savollarga javob berish shart" });
+      }
+
+      // Verify all answers
+      for (let i = 0; i < userQuestions.length; i++) {
+        const question = userQuestions[i];
+        const userAnswer = answers[i];
+        
+        const isCorrect = await storage.verifySecurityAnswer(question.id, userAnswer);
+        if (!isCorrect) {
+          return res.status(400).json({ message: `${i + 1}-savol javobi noto'g'ri` });
+        }
+      }
+
+      // All answers correct, generate reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 3600000); // 1 hour
+      await storage.createPasswordResetToken(email, resetToken, expiresAt);
+
+      console.log(`🔑 Security verified reset token for ${email}: ${resetToken}`);
+      
+      res.json({ 
+        message: "Xavfsizlik savollari tasdiqlandi. Reset token email manzilingizga yuborildi.",
+        resetToken: resetToken // DEVELOPMENT ONLY
+      });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Xavfsizlik savollarida xatolik" });
+    }
+  });
+
+  // Enhanced forgot password endpoint with additional verification (legacy support)
+  app.post('/api/auth/enhanced-forgot-password', async (req, res) => {
+    try {
+      const data = enhancedForgotPasswordSchema.parse(req.body);
+      
+      // Check if user exists
+      const user = await storage.getUserByEmail(data.email);
+      if (!user) {
+        // Don't reveal whether user exists for security
+        return res.json({ message: "Ma'lumotlar tekshirildi. Agar barcha ma'lumotlar to'g'ri bo'lsa, reset token yuboriladi." });
+      }
+
+      // Get user's security settings
+      const securitySettings = await storage.getUserSecuritySettings(user.id);
+      let isVerified = true;
+      const requiredFields: string[] = [];
+
+      // Check username if required
+      if (securitySettings?.requireUsernameForReset) {
+        if (!data.username || data.username !== user.username) {
+          isVerified = false;
+          requiredFields.push("username");
+        }
+      }
+
+      // Check birth date if required (and user has birth date)
+      if (user.birthDate && data.birthDate && data.birthDate !== user.birthDate) {
+        isVerified = false;
+      }
+
+      // Check security questions if required
+      if (securitySettings?.requireSecurityQuestions && data.securityAnswers) {
+        for (const answer of data.securityAnswers) {
+          const isCorrect = await storage.verifySecurityAnswer(answer.questionId, answer.answer);
+          if (!isCorrect) {
+            isVerified = false;
+            break;
+          }
+        }
+      }
+
+      if (!isVerified) {
+        return res.status(400).json({ 
+          message: "Kiritilgan ma'lumotlar noto'g'ri",
+          requiredFields 
+        });
+      }
+
+      // Generate reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 3600000); // 1 hour
+
+      // Store reset token
+      await storage.createPasswordResetToken(data.email, resetToken, expiresAt);
+
+      console.log(`🔑 Enhanced password reset token for ${data.email}: ${resetToken}`);
+      
+      res.json({ 
+        message: "Parolni tiklash ko'rsatmalari email manzilingizga yuborildi",
+        // DEVELOPMENT ONLY
+        resetToken: resetToken
+      });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Parolni tiklashda xatolik" });
     }
   });
 

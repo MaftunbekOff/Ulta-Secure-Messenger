@@ -36,11 +36,21 @@ Preferred communication style: Simple, everyday language.
   - Message Reads: Read receipt tracking
 - **Migrations**: Drizzle-kit for database schema management and migrations
 
-### Security Features
+### Advanced Security Features
 - **Message Encryption**: Client-side encryption for message content (MVP implementation with XOR cipher)
 - **Authentication**: JWT-based authentication with secure token storage
 - **Password Security**: bcrypt hashing for password storage
-- **Password Reset**: Secure password reset system with time-limited tokens
+- **Multi-Step Password Reset**: Comprehensive password reset system with:
+  - Email verification step
+  - Account verification (username + birth date validation)
+  - Security questions verification
+  - Multi-layered protection against unauthorized access
+- **Security Settings Management**: User-configurable security options including:
+  - Username requirement for password reset
+  - Security questions enforcement
+  - Last activity verification
+  - Toggleable security features
+- **Security Questions System**: Predefined security questions with encrypted answers for additional account protection
 - **Session Management**: Secure session handling with HTTP-only considerations
 
 ### Real-time Communication

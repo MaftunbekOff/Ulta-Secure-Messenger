@@ -8,15 +8,23 @@ import {
   type ChatMember,
   type InsertChatMember,
   type PasswordResetToken,
+  type UserSecuritySettings,
+  type UpdateSecuritySettings,
+  type SecurityQuestion,
+  type CreateSecurityQuestion,
+  type UpdateSecurityQuestion,
   users,
   chats,
   chatMembers,
   messages,
   messageReads,
   passwordResetTokens,
+  userSecuritySettings,
+  securityQuestions,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sql, ne } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 
 // Renamed tables to avoid naming conflicts with imported schema types
 import { users as usersTable, messages as messagesTable } from "@shared/schema";
@@ -65,6 +73,18 @@ export interface IStorage {
   createPasswordResetToken(email: string, token: string, expiresAt: Date): Promise<PasswordResetToken>;
   getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
   markPasswordResetTokenAsUsed(token: string): Promise<void>;
+
+  // Security settings operations
+  getUserSecuritySettings(userId: string): Promise<UserSecuritySettings | undefined>;
+  createOrUpdateSecuritySettings(userId: string, settings: UpdateSecuritySettings): Promise<UserSecuritySettings>;
+  updateLastActivity(userId: string, location: string, ip: string, device: string): Promise<void>;
+
+  // Security questions operations
+  getUserSecurityQuestions(userId: string): Promise<SecurityQuestion[]>;
+  createSecurityQuestion(userId: string, question: CreateSecurityQuestion): Promise<SecurityQuestion>;
+  updateSecurityQuestion(questionId: string, updates: UpdateSecurityQuestion): Promise<SecurityQuestion | undefined>;
+  deleteSecurityQuestion(questionId: string): Promise<void>;
+  verifySecurityAnswer(questionId: string, answer: string): Promise<boolean>;
 }
 
 export class MemoryStorage implements IStorage {
@@ -74,6 +94,8 @@ export class MemoryStorage implements IStorage {
   private chatMembers: Map<string, ChatMember[]> = new Map();
   private messageReads: Map<string, string[]> = new Map();
   private passwordResetTokens: Map<string, PasswordResetToken> = new Map();
+  private securitySettings: Map<string, UserSecuritySettings> = new Map();
+  private securityQuestions: Map<string, SecurityQuestion[]> = new Map();
 
   async getUser(id: string): Promise<User | undefined> {
     return this.users.get(id);
@@ -372,6 +394,100 @@ export class MemoryStorage implements IStorage {
       resetToken.usedAt = new Date();
       this.passwordResetTokens.set(token, resetToken);
     }
+  }
+
+  // Security settings operations
+  async getUserSecuritySettings(userId: string): Promise<UserSecuritySettings | undefined> {
+    return this.securitySettings.get(userId);
+  }
+
+  async createOrUpdateSecuritySettings(userId: string, settings: UpdateSecuritySettings): Promise<UserSecuritySettings> {
+    const existing = this.securitySettings.get(userId);
+    const newSettings: UserSecuritySettings = {
+      id: existing?.id || generateId(),
+      userId,
+      requireUsernameForReset: settings.requireUsernameForReset ?? false,
+      requireSecurityQuestions: settings.requireSecurityQuestions ?? false,
+      requireLastActivity: settings.requireLastActivity ?? false,
+      twoFactorEnabled: settings.twoFactorEnabled ?? false,
+      lastActivityLocation: existing?.lastActivityLocation || null,
+      lastActivityIP: existing?.lastActivityIP || null,
+      lastActivityDevice: existing?.lastActivityDevice || null,
+      createdAt: existing?.createdAt || new Date(),
+      updatedAt: new Date(),
+    };
+
+    this.securitySettings.set(userId, newSettings);
+    return newSettings;
+  }
+
+  async updateLastActivity(userId: string, location: string, ip: string, device: string): Promise<void> {
+    const existing = this.securitySettings.get(userId);
+    if (existing) {
+      existing.lastActivityLocation = location;
+      existing.lastActivityIP = ip;
+      existing.lastActivityDevice = device;
+      existing.updatedAt = new Date();
+      this.securitySettings.set(userId, existing);
+    }
+  }
+
+  // Security questions operations
+  async getUserSecurityQuestions(userId: string): Promise<SecurityQuestion[]> {
+    return this.securityQuestions.get(userId) || [];
+  }
+
+  async createSecurityQuestion(userId: string, question: CreateSecurityQuestion): Promise<SecurityQuestion> {
+    const hashedAnswer = await bcrypt.hash(question.answer.toLowerCase().trim(), 10);
+    const newQuestion: SecurityQuestion = {
+      id: generateId(),
+      userId,
+      question: question.question,
+      answerHash: hashedAnswer,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const userQuestions = this.securityQuestions.get(userId) || [];
+    userQuestions.push(newQuestion);
+    this.securityQuestions.set(userId, userQuestions);
+    
+    return newQuestion;
+  }
+
+  async updateSecurityQuestion(questionId: string, updates: UpdateSecurityQuestion): Promise<SecurityQuestion | undefined> {
+    for (const [userId, questions] of this.securityQuestions.entries()) {
+      const questionIndex = questions.findIndex(q => q.id === questionId);
+      if (questionIndex !== -1) {
+        const question = questions[questionIndex];
+        question.question = updates.question;
+        question.answerHash = await bcrypt.hash(updates.answer.toLowerCase().trim(), 10);
+        question.updatedAt = new Date();
+        return question;
+      }
+    }
+    return undefined;
+  }
+
+  async deleteSecurityQuestion(questionId: string): Promise<void> {
+    for (const [userId, questions] of this.securityQuestions.entries()) {
+      const filteredQuestions = questions.filter(q => q.id !== questionId);
+      if (filteredQuestions.length !== questions.length) {
+        this.securityQuestions.set(userId, filteredQuestions);
+        break;
+      }
+    }
+  }
+
+  async verifySecurityAnswer(questionId: string, answer: string): Promise<boolean> {
+    for (const questions of this.securityQuestions.values()) {
+      const question = questions.find(q => q.id === questionId);
+      if (question) {
+        return await bcrypt.compare(answer.toLowerCase().trim(), question.answerHash);
+      }
+    }
+    return false;
   }
 }
 
@@ -737,6 +853,128 @@ export class DatabaseStorage implements IStorage {
       .update(passwordResetTokens)
       .set({ usedAt: new Date() })
       .where(eq(passwordResetTokens.token, token));
+  }
+
+  // Security settings operations
+  async getUserSecuritySettings(userId: string): Promise<UserSecuritySettings | undefined> {
+    const result = await db
+      .select()
+      .from(userSecuritySettings)
+      .where(eq(userSecuritySettings.userId, userId))
+      .limit(1);
+
+    return result[0];
+  }
+
+  async createOrUpdateSecuritySettings(userId: string, settings: UpdateSecuritySettings): Promise<UserSecuritySettings> {
+    // Try to update first
+    const updated = await db
+      .update(userSecuritySettings)
+      .set({
+        ...settings,
+        updatedAt: new Date(),
+      })
+      .where(eq(userSecuritySettings.userId, userId))
+      .returning();
+
+    if (updated.length > 0) {
+      return updated[0];
+    }
+
+    // If no update, create new
+    const created = await db
+      .insert(userSecuritySettings)
+      .values({
+        userId,
+        requireUsernameForReset: settings.requireUsernameForReset ?? false,
+        requireSecurityQuestions: settings.requireSecurityQuestions ?? false,
+        requireLastActivity: settings.requireLastActivity ?? false,
+        twoFactorEnabled: settings.twoFactorEnabled ?? false,
+      })
+      .returning();
+
+    return created[0];
+  }
+
+  async updateLastActivity(userId: string, location: string, ip: string, device: string): Promise<void> {
+    await db
+      .update(userSecuritySettings)
+      .set({
+        lastActivityLocation: location,
+        lastActivityIP: ip,
+        lastActivityDevice: device,
+        updatedAt: new Date(),
+      })
+      .where(eq(userSecuritySettings.userId, userId));
+  }
+
+  // Security questions operations
+  async getUserSecurityQuestions(userId: string): Promise<SecurityQuestion[]> {
+    const result = await db
+      .select()
+      .from(securityQuestions)
+      .where(and(
+        eq(securityQuestions.userId, userId),
+        eq(securityQuestions.isActive, true)
+      ))
+      .orderBy(securityQuestions.createdAt);
+
+    return result;
+  }
+
+  async createSecurityQuestion(userId: string, question: CreateSecurityQuestion): Promise<SecurityQuestion> {
+    const hashedAnswer = await bcrypt.hash(question.answer.toLowerCase().trim(), 10);
+    
+    const result = await db
+      .insert(securityQuestions)
+      .values({
+        userId,
+        question: question.question,
+        answerHash: hashedAnswer,
+      })
+      .returning();
+
+    return result[0];
+  }
+
+  async updateSecurityQuestion(questionId: string, updates: UpdateSecurityQuestion): Promise<SecurityQuestion | undefined> {
+    const hashedAnswer = await bcrypt.hash(updates.answer.toLowerCase().trim(), 10);
+    
+    const result = await db
+      .update(securityQuestions)
+      .set({
+        question: updates.question,
+        answerHash: hashedAnswer,
+        updatedAt: new Date(),
+      })
+      .where(eq(securityQuestions.id, questionId))
+      .returning();
+
+    return result[0];
+  }
+
+  async deleteSecurityQuestion(questionId: string): Promise<void> {
+    await db
+      .update(securityQuestions)
+      .set({ isActive: false })
+      .where(eq(securityQuestions.id, questionId));
+  }
+
+  async verifySecurityAnswer(questionId: string, answer: string): Promise<boolean> {
+    const result = await db
+      .select()
+      .from(securityQuestions)
+      .where(and(
+        eq(securityQuestions.id, questionId),
+        eq(securityQuestions.isActive, true)
+      ))
+      .limit(1);
+
+    if (result.length === 0) {
+      return false;
+    }
+
+    return await bcrypt.compare(answer.toLowerCase().trim(), result[0].answerHash);
   }
 }
 

@@ -68,12 +68,48 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Security settings for users
+export const userSecuritySettings = pgTable("user_security_settings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  requireUsernameForReset: boolean("require_username_for_reset").default(false),
+  requireSecurityQuestions: boolean("require_security_questions").default(false),
+  requireLastActivity: boolean("require_last_activity").default(false),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
+  lastActivityLocation: varchar("last_activity_location", { length: 255 }),
+  lastActivityIP: varchar("last_activity_ip", { length: 45 }),
+  lastActivityDevice: varchar("last_activity_device", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Security questions for password recovery
+export const securityQuestions = pgTable("security_questions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  question: varchar("question", { length: 500 }).notNull(),
+  answerHash: text("answer_hash").notNull(), // bcrypt hashed answer
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   chatMembers: many(chatMembers),
   sentMessages: many(messages),
   messageReads: many(messageReads),
   createdChats: many(chats),
+  securitySettings: one(userSecuritySettings),
+  securityQuestions: many(securityQuestions),
+}));
+
+export const userSecuritySettingsRelations = relations(userSecuritySettings, ({ one }) => ({
+  user: one(users, { fields: [userSecuritySettings.userId], references: [users.id] }),
+}));
+
+export const securityQuestionsRelations = relations(securityQuestions, ({ one }) => ({
+  user: one(users, { fields: [securityQuestions.userId], references: [users.id] }),
 }));
 
 export const chatsRelations = relations(chats, ({ one, many }) => ({
@@ -222,6 +258,62 @@ export const resetPasswordSchema = z.object({
   path: ["confirmPassword"],
 });
 
+// Enhanced forgot password schema with additional verification
+export const enhancedForgotPasswordSchema = z.object({
+  email: z.string().email("Yaroqli email manzil kiriting"),
+  username: z.string().optional(),
+  birthDate: z.string().optional(),
+  securityAnswers: z.array(z.object({
+    questionId: z.string(),
+    answer: z.string().min(1, "Javob kiriting"),
+  })).optional(),
+});
+
+// Security settings schemas
+export const insertSecuritySettingsSchema = createInsertSchema(userSecuritySettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateSecuritySettingsSchema = z.object({
+  requireUsernameForReset: z.boolean().optional(),
+  requireSecurityQuestions: z.boolean().optional(),
+  requireLastActivity: z.boolean().optional(),
+  twoFactorEnabled: z.boolean().optional(),
+});
+
+// Security questions schemas
+export const insertSecurityQuestionSchema = createInsertSchema(securityQuestions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  answerHash: true,
+});
+
+export const createSecurityQuestionSchema = z.object({
+  question: z.string().min(5, "Savol kamida 5 ta belgidan iborat bo'lishi kerak").max(500),
+  answer: z.string().min(2, "Javob kamida 2 ta belgidan iborat bo'lishi kerak"),
+});
+
+export const updateSecurityQuestionSchema = z.object({
+  id: z.string().uuid(),
+  question: z.string().min(5, "Savol kamida 5 ta belgidan iborat bo'lishi kerak").max(500),
+  answer: z.string().min(2, "Javob kamida 2 ta belgidan iborat bo'lishi kerak"),
+});
+
+// Predefined security questions
+export const PREDEFINED_SECURITY_QUESTIONS = [
+  "Birinchi maktabingizning nomi nima edi?",
+  "Birinchi uy hayvongiznig nomi nima edi?",
+  "Onangizning qizlik familiyasi nima?",
+  "Tug'ilgan shahringizning nomi nima?",
+  "Birinchi do'stingizning ismi nima edi?",
+  "Sevimli kitobingizning nomi nima?",
+  "Birinchi ishjoying qayerda edi?",
+  "Sevimli o'qituvchingizning familiyasi nima edi?",
+] as const;
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -237,4 +329,14 @@ export type UpdateProfileData = z.infer<typeof updateProfileSchema>;
 export type ChangePasswordData = z.infer<typeof changePasswordSchema>;
 export type ForgotPasswordData = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
+export type EnhancedForgotPasswordData = z.infer<typeof enhancedForgotPasswordSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+// Security types
+export type UserSecuritySettings = typeof userSecuritySettings.$inferSelect;
+export type InsertSecuritySettings = z.infer<typeof insertSecuritySettingsSchema>;
+export type UpdateSecuritySettings = z.infer<typeof updateSecuritySettingsSchema>;
+export type SecurityQuestion = typeof securityQuestions.$inferSelect;
+export type InsertSecurityQuestion = z.infer<typeof insertSecurityQuestionSchema>;
+export type CreateSecurityQuestion = z.infer<typeof createSecurityQuestionSchema>;
+export type UpdateSecurityQuestion = z.infer<typeof updateSecurityQuestionSchema>;

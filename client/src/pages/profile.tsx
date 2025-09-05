@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, Settings, Camera, Save, Lock, ArrowLeft, Upload, ImageIcon, X, RotateCw, ZoomIn, ZoomOut, Move } from "lucide-react";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { User, Settings, Camera, Save, Lock, ArrowLeft, Upload, ImageIcon, X, RotateCw, ZoomIn, ZoomOut, Move, Shield, Plus, Trash2, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,10 +12,24 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { getAuthHeaders } from "@/lib/authUtils";
-import { updateProfileSchema, changePasswordSchema, type UpdateProfileData, type ChangePasswordData } from "@shared/schema";
+import { 
+  updateProfileSchema, 
+  changePasswordSchema, 
+  createSecurityQuestionSchema,
+  updateSecurityQuestionSchema,
+  PREDEFINED_SECURITY_QUESTIONS,
+  type UpdateProfileData, 
+  type ChangePasswordData,
+  type CreateSecurityQuestion,
+  type UpdateSecurityQuestion,
+  type UserSecuritySettings,
+  type SecurityQuestion
+} from "@shared/schema";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -91,6 +105,10 @@ export default function Profile() {
   const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  // Security states
+  const [isAddingQuestion, setIsAddingQuestion] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<SecurityQuestion | null>(null);
 
   // Phone number validation function with length limiting
   const validatePhoneNumber = useCallback((phoneNumber: string, countryCode: string) => {
@@ -743,6 +761,24 @@ export default function Profile() {
     },
   });
 
+  // Security question forms
+  const questionForm = useForm<CreateSecurityQuestion>({
+    resolver: zodResolver(createSecurityQuestionSchema),
+    defaultValues: {
+      question: "",
+      answer: "",
+    },
+  });
+
+  const editQuestionForm = useForm<UpdateSecurityQuestion>({
+    resolver: zodResolver(updateSecurityQuestionSchema),
+    defaultValues: {
+      id: "",
+      question: "",
+      answer: "",
+    },
+  });
+
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: UpdateProfileData) => {
@@ -807,6 +843,139 @@ export default function Profile() {
     onError: (error: Error) => {
       toast({
         title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Security queries and mutations
+  const { data: securitySettings } = useQuery({
+    queryKey: ["/api/user/security-settings"],
+    queryFn: async () => {
+      const response = await apiRequest("/api/user/security-settings", {
+        headers: getAuthHeaders(),
+      });
+      return response.json();
+    },
+  });
+
+  const { data: securityQuestions = [] } = useQuery({
+    queryKey: ["/api/user/security-questions"],
+    queryFn: async () => {
+      const response = await apiRequest("/api/user/security-questions", {
+        headers: getAuthHeaders(),
+      });
+      return response.json();
+    },
+  });
+
+  const updateSecuritySettingsMutation = useMutation({
+    mutationFn: async (settings: any) => {
+      const response = await apiRequest("/api/user/security-settings", {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(settings),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "✅ Muvaffaqiyat",
+        description: "Xavfsizlik sozlamalari yangilandi",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/security-settings"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "❌ Xatolik",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createQuestionMutation = useMutation({
+    mutationFn: async (data: CreateSecurityQuestion) => {
+      const response = await apiRequest("/api/user/security-questions", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "✅ Muvaffaqiyat",
+        description: "Xavfsizlik savoli qo'shildi",
+      });
+      questionForm.reset();
+      setIsAddingQuestion(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/user/security-questions"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "❌ Xatolik",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateQuestionMutation = useMutation({
+    mutationFn: async (data: UpdateSecurityQuestion) => {
+      const response = await apiRequest(`/api/user/security-questions/${data.id}`, {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "✅ Muvaffaqiyat",
+        description: "Xavfsizlik savoli yangilandi",
+      });
+      setEditingQuestion(null);
+      editQuestionForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/user/security-questions"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "❌ Xatolik",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteQuestionMutation = useMutation({
+    mutationFn: async (questionId: string) => {
+      const response = await apiRequest(`/api/user/security-questions/${questionId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "✅ Muvaffaqiyat",
+        description: "Xavfsizlik savoli o'chirildi",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/security-questions"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "❌ Xatolik",
         description: error.message,
         variant: "destructive",
       });
@@ -1374,6 +1543,175 @@ export default function Profile() {
                 </Form>
               </CardContent>
             </Card>
+
+            {/* Security Settings Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Shield className="h-5 w-5 mr-2" />
+                  🔐 Xavfsizlik sozlamalari
+                </CardTitle>
+                <CardDescription>
+                  Parolni tiklash uchun qo'shimcha xavfsizlik choralarini belgilang
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div className="font-medium">👤 Username talab qilish</div>
+                      <div className="text-sm text-muted-foreground">
+                        Parol tiklanishida username kiritishni majburiy qilish
+                      </div>
+                    </div>
+                    <Switch
+                      checked={securitySettings?.requireUsernameForReset || false}
+                      onCheckedChange={(checked) => 
+                        updateSecuritySettingsMutation.mutate({ requireUsernameForReset: checked })
+                      }
+                      data-testid="switch-require-username"
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div className="font-medium">❓ Xavfsizlik savollarini talab qilish</div>
+                      <div className="text-sm text-muted-foreground">
+                        Parol tiklanishida xavfsizlik savollariga javob berishni majburiy qilish
+                      </div>
+                    </div>
+                    <Switch
+                      checked={securitySettings?.requireSecurityQuestions || false}
+                      onCheckedChange={(checked) => 
+                        updateSecuritySettingsMutation.mutate({ requireSecurityQuestions: checked })
+                      }
+                      data-testid="switch-require-questions"
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div className="font-medium">📍 Oxirgi faoliyatni tekshirish</div>
+                      <div className="text-sm text-muted-foreground">
+                        Parol tiklanishida oxirgi faoliyat ma'lumotlarini tekshirish
+                      </div>
+                    </div>
+                    <Switch
+                      checked={securitySettings?.requireLastActivity || false}
+                      onCheckedChange={(checked) => 
+                        updateSecuritySettingsMutation.mutate({ requireLastActivity: checked })
+                      }
+                      data-testid="switch-require-activity"
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div className="font-medium">🔒 Ikki faktorli autentifikatsiya</div>
+                      <div className="text-sm text-muted-foreground">
+                        Qo'shimcha xavfsizlik uchun ikki faktorli autentifikatsiya (tez kunda)
+                      </div>
+                    </div>
+                    <Switch
+                      checked={false}
+                      disabled={true}
+                      data-testid="switch-2fa"
+                    />
+                  </div>
+                </div>
+
+                {securitySettings?.lastActivityLocation && (
+                  <div className="mt-6 p-4 bg-muted rounded-lg">
+                    <div className="text-sm font-medium mb-2">📍 Oxirgi faoliyat</div>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <div>📍 Joylashuv: {securitySettings.lastActivityLocation}</div>
+                      <div>🌐 IP: {securitySettings.lastActivityIP}</div>
+                      <div>💻 Qurilma: {securitySettings.lastActivityDevice}</div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Security Questions Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Shield className="h-5 w-5 mr-2" />
+                    ❓ Xavfsizlik savollari
+                  </div>
+                  <Button
+                    onClick={() => setIsAddingQuestion(true)}
+                    size="sm"
+                    disabled={securityQuestions.length >= 5}
+                    data-testid="button-add-question"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Savol qo'shish
+                  </Button>
+                </CardTitle>
+                <CardDescription>
+                  Parolni tiklash uchun xavfsizlik savollarini o'rnating. Maksimal 5 ta savol.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {securityQuestions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <div>Hech qanday xavfsizlik savoli o'rnatilmagan</div>
+                    <div className="text-sm mt-1">Qo'shimcha himoya uchun xavfsizlik savollarini qo'shing</div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {securityQuestions.map((question: any, index: number) => (
+                      <div key={question.id} className="flex items-start justify-between p-3 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">
+                            {index + 1}. {question.question}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Yaratilgan: {new Date(question.createdAt).toLocaleDateString('uz-UZ')}
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingQuestion(question);
+                              editQuestionForm.reset({
+                                id: question.id,
+                                question: question.question,
+                                answer: "",
+                              });
+                            }}
+                            data-testid={`button-edit-question-${index}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => deleteQuestionMutation.mutate(question.id)}
+                            disabled={deleteQuestionMutation.isPending}
+                            data-testid={`button-delete-question-${index}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
@@ -1474,6 +1812,185 @@ export default function Profile() {
               Saqlash
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Security Question Dialog */}
+      <Dialog open={isAddingQuestion} onOpenChange={setIsAddingQuestion}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              ❓ Yangi xavfsizlik savoli
+            </DialogTitle>
+            <DialogDescription>
+              Parolni tiklash uchun xavfsizlik savolini qo'shing
+            </DialogDescription>
+          </DialogHeader>
+
+          <Form {...questionForm}>
+            <form onSubmit={questionForm.handleSubmit((data) => createQuestionMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={questionForm.control}
+                name="question"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Savol</FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        data-testid="select-question"
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Savolni tanlang" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PREDEFINED_SECURITY_QUESTIONS.map((question) => (
+                            <SelectItem key={question} value={question}>
+                              {question}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={questionForm.control}
+                name="answer"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Javob</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="Javobingizni kiriting"
+                        {...field}
+                        data-testid="input-question-answer"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsAddingQuestion(false);
+                    questionForm.reset();
+                  }}
+                >
+                  Bekor qilish
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createQuestionMutation.isPending}
+                  data-testid="button-save-question"
+                >
+                  {createQuestionMutation.isPending ? "Saqlanmoqda..." : "Saqlash"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Security Question Dialog */}
+      <Dialog open={!!editingQuestion} onOpenChange={(open) => {
+        if (!open) {
+          setEditingQuestion(null);
+          editQuestionForm.reset();
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5" />
+              ✏️ Xavfsizlik savolini tahrirlash
+            </DialogTitle>
+            <DialogDescription>
+              Xavfsizlik savolini va javobini yangilang
+            </DialogDescription>
+          </DialogHeader>
+
+          <Form {...editQuestionForm}>
+            <form onSubmit={editQuestionForm.handleSubmit((data) => updateQuestionMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={editQuestionForm.control}
+                name="question"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Savol</FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        data-testid="select-edit-question"
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Savolni tanlang" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PREDEFINED_SECURITY_QUESTIONS.map((question) => (
+                            <SelectItem key={question} value={question}>
+                              {question}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editQuestionForm.control}
+                name="answer"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Yangi javob</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="Yangi javobingizni kiriting"
+                        {...field}
+                        data-testid="input-edit-question-answer"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditingQuestion(null);
+                    editQuestionForm.reset();
+                  }}
+                >
+                  Bekor qilish
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={updateQuestionMutation.isPending}
+                  data-testid="button-update-question"
+                >
+                  {updateQuestionMutation.isPending ? "Yangilanmoqda..." : "Yangilash"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </div>
