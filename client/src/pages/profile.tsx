@@ -725,7 +725,9 @@ export default function Profile() {
     if (user) {
       // Parse phone number and set country code first
       let detectedCountryCode = "+998"; // default
-      if (user.phoneNumber) {
+      let fullPhoneNumber = detectedCountryCode; // default form value
+      
+      if (user.phoneNumber && user.phoneNumber.trim() !== '') {
         // Extract country code from phone number - longest match first
         const sortedCodes = countryCodes
           .filter(country => !country.hidden)
@@ -734,6 +736,7 @@ export default function Profile() {
         for (const country of sortedCodes) {
           if (user.phoneNumber.startsWith(country.code)) {
             detectedCountryCode = country.code;
+            fullPhoneNumber = user.phoneNumber; // Use the full number from database
             break;
           }
         }
@@ -741,12 +744,12 @@ export default function Profile() {
       
       setSelectedCountryCode(detectedCountryCode);
       
-      // Reset form with user data
+      // Reset form with user data, ensuring phone number shows the full database value
       profileForm.reset({
         firstName: user.firstName || "",
         lastName: user.lastName || "",
         email: user.email || "",
-        phoneNumber: user.phoneNumber || detectedCountryCode,
+        phoneNumber: fullPhoneNumber, // This will be the full phone number from database
         displayUsername: user.displayUsername || "",
         profileImageUrl: user.profileImageUrl || "",
       });
@@ -1292,38 +1295,25 @@ export default function Profile() {
                                     field.onChange(fullNumber);
                                   }}
                                   value={(() => {
-                                    // Priority 1: Use form value if it exists and is different from country code
-                                    if (field.value && field.value !== selectedCountryCode && field.value.trim() !== '') {
-                                      const phoneOnly = field.value.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}\\s*`), '').trim();
+                                    // Get current form value
+                                    const currentValue = field.value || '';
+                                    
+                                    // If form has a value and it's not just the country code, extract phone part
+                                    if (currentValue && currentValue !== selectedCountryCode && currentValue.trim() !== '') {
+                                      const phoneOnly = currentValue.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}\\s*`), '').trim();
                                       return phoneOnly;
                                     }
                                     
-                                    // Priority 2: Use database phone number if available
-                                    if (user?.phoneNumber && user.phoneNumber.trim() !== '' && user.phoneNumber !== selectedCountryCode) {
-                                      // Check if user's phone starts with current selected country code
+                                    // If form is empty but user has phone number, sync it
+                                    if ((!currentValue || currentValue === selectedCountryCode) && user?.phoneNumber && user.phoneNumber.trim() !== '') {
                                       if (user.phoneNumber.startsWith(selectedCountryCode)) {
                                         const phoneOnly = user.phoneNumber.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}\\s*`), '').trim();
-                                        
-                                        // Auto-sync form with database value if form is empty or just has country code
-                                        if (!field.value || field.value === selectedCountryCode) {
-                                          setTimeout(() => field.onChange(user.phoneNumber), 0);
-                                        }
-                                        
+                                        // Sync form value
+                                        setTimeout(() => field.onChange(user.phoneNumber), 0);
                                         return phoneOnly;
-                                      } else {
-                                        // If database phone has different country code, show it as is
-                                        // This handles cases where country code was changed but phone wasn't updated
-                                        const phoneWithoutAnyCode = user.phoneNumber.replace(/^\+\d{1,4}\s*/, '').trim();
-                                        
-                                        // Update form to match current country code selection
-                                        const newFullNumber = phoneWithoutAnyCode ? `${selectedCountryCode} ${phoneWithoutAnyCode}` : selectedCountryCode;
-                                        setTimeout(() => field.onChange(newFullNumber), 0);
-                                        
-                                        return phoneWithoutAnyCode;
                                       }
                                     }
                                     
-                                    // Priority 3: Empty state
                                     return '';
                                   })()}
                                 />
