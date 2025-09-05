@@ -142,9 +142,28 @@ export const updateProfileSchema = z.object({
   phoneNumber: z.string().max(20).optional().or(z.literal("")).or(z.undefined()),
   displayUsername: z.string().optional().or(z.literal("")).or(z.undefined()).refine((val) => {
     if (!val || val === "") return true; // Empty values are allowed
-    return /^@[a-zA-Z][a-zA-Z0-9_]*$/.test(val);
+    
+    // Remove @ prefix for validation if present
+    const username = val.startsWith('@') ? val.slice(1) : val;
+    
+    // Check length (5-32 characters after @)
+    if (username.length < 5 || username.length > 32) return false;
+    
+    // Must start with letter
+    if (!/^[a-zA-Z]/.test(username)) return false;
+    
+    // Only letters, numbers, and underscores allowed
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) return false;
+    
+    // Cannot have consecutive underscores
+    if (/__/.test(username)) return false;
+    
+    // Cannot end with underscore
+    if (username.endsWith('_')) return false;
+    
+    return true;
   }, {
-    message: "Username must start with @ followed by letters, numbers, and underscores"
+    message: "Username must be 5-32 characters, start with letter, contain only letters/numbers/underscores, no consecutive underscores, and not end with underscore"
   }),
   profileImageUrl: z.string().optional().or(z.literal("")).or(z.undefined()),
 });

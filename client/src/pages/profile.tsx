@@ -702,16 +702,26 @@ export default function Profile() {
                                   const startsWithUnderscore = /^_/.test(originalInput);
                                   const hasConsecutiveUnderscores = /__+/.test(originalInput);
                                   const endsWithUnderscore = /_$/.test(originalInput) && originalInput.length > 1;
+                                  const tooShort = originalInput.length > 0 && originalInput.length < 5;
+                                  const tooLong = originalInput.length > 32;
                                   
                                   let validationMessages = [];
                                   
+                                  if (tooShort) {
+                                    validationMessages.push("Kamida 5 ta belgi bo'lishi kerak");
+                                  }
+                                  
+                                  if (tooLong) {
+                                    validationMessages.push("Ko'pi bilan 32 ta belgi bo'lishi mumkin");
+                                  }
+                                  
                                   if (invalidChars && invalidChars.length > 0) {
-                                    const uniqueInvalidChars = [...new Set(invalidChars)].join(', ');
+                                    const uniqueInvalidChars = Array.from(new Set(invalidChars)).join(', ');
                                     validationMessages.push(`"${uniqueInvalidChars}" belgilar ishlatilmaydi`);
                                   }
                                   
                                   if (startsWithNumber) {
-                                    validationMessages.push("Raqam bilan boshlanmasligi kerak");
+                                    validationMessages.push("Harf bilan boshlanishi kerak");
                                   }
                                   
                                   if (startsWithUnderscore) {
@@ -746,7 +756,7 @@ export default function Profile() {
                                     
                                     // Check username availability after a delay (debouncing)
                                     timeoutRef.current = setTimeout(() => {
-                                      if (finalValue && finalValue.length > 3) {
+                                      if (finalValue && finalValue.length >= 6) { // @username = 5 chars + @ = 6 total
                                         checkUsernameAvailability(finalValue);
                                       }
                                     }, 500); // 500ms debounce
