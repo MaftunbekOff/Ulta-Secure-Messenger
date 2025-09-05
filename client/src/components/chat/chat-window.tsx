@@ -8,6 +8,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Shield, Wifi, WifiOff, ArrowLeft, User, Settings } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import DevPanel from '@/components/dev/dev-panel';
+import { useQuery } from '@tanstack/react-query';
+import { queryClient } from '@/lib/queryClient';
 
 interface Message {
   id: string;
@@ -150,7 +152,7 @@ export default function ChatWindow({
     return 'Oxirgi faollik noma\'lum';
   };
 
-  // Handle incoming messages
+  // Handle incoming messages via WebSocket
   useEffect(() => {
     if (lastMessage) {
       try {
@@ -158,48 +160,86 @@ export default function ChatWindow({
           ? JSON.parse(lastMessage) 
           : lastMessage;
 
-        if (messageData.type === 'message') {
-          const newMessage: Message = {
-            id: messageData.messageId || Date.now().toString(),
-            content: messageData.content || messageData.message,
-            userId: messageData.userId || 'other',
-            timestamp: new Date(messageData.timestamp || Date.now()),
-            encrypted: messageData.encrypted || true
-          };
-
-          setMessages(prev => [...prev, newMessage]);
+        if (messageData.type === 'message' && messageData.chatId === chatId) {
+          // Refresh message history from database instead of adding locally
+          // This ensures consistency and avoids duplicates
+          queryClient.invalidateQueries({ queryKey: ['/api/chats', chatId, 'messages'] });
         }
       } catch (error) {
         console.warn('Failed to parse message:', error);
       }
     }
-  }, [lastMessage]);
+  }, [lastMessage, chatId]);
 
-  // Initialize with empty messages - no spam welcome messages
+  // Load message history from database
+  const { data: messageHistory, isLoading: isLoadingMessages } = useQuery({
+    queryKey: ['/api/chats', chatId, 'messages'],
+    enabled: !!chatId && chatId !== 'default',
+  });
+
+  // Initialize messages from database when loaded
   useEffect(() => {
-    setMessages([]);
-  }, []);
+    if (messageHistory && Array.isArray(messageHistory)) {
+      const formattedMessages: Message[] = messageHistory.map((msg: any) => ({
+        id: msg.id,
+        content: msg.content,
+        userId: msg.senderId || msg.userId,
+        timestamp: new Date(msg.createdAt),
+        encrypted: msg.isEncrypted
+      }));
+      setMessages(formattedMessages);
+    } else if (!isLoadingMessages) {
+      // Only clear messages if not loading and no data
+      setMessages([]);
+    }
+  }, [messageHistory, isLoadingMessages]);
 
-  const handleSendMessage = (content: string) => {
-    if (!isConnected) {
-      console.warn('WebSocket not connected');
+  const handleSendMessage = async (content: string) => {
+    if (!chatId || chatId === 'default') {
+      console.warn('No valid chat selected');
       return;
     }
 
-    // Add to local messages immediately
-    const localMessage: Message = {
-      id: Date.now().toString(),
-      content: content,
-      userId: currentUserId || 'user1',
-      timestamp: new Date(),
-      encrypted: true
-    };
+    try {
+      // Send message via API (saves to database)
+      const response = await fetch(`/api/chats/${chatId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          content: content,
+          messageType: 'text'
+        })
+      });
 
-    setMessages(prev => [...prev, localMessage]);
-
-    // Send simple message via WebSocket
-    if (sendMessage && typeof sendMessage === 'function') {
-      sendMessage(content);
+      if (response.ok) {
+        const newMessage = await response.json();
+        console.log('✅ Message saved to database:', newMessage.id);
+        
+        // Invalidate cache to refresh message list
+        queryClient.invalidateQueries({ queryKey: ['/api/chats', chatId, 'messages'] });
+        
+        // Also send via WebSocket for real-time delivery to other clients
+        if (isConnected && sendMessage && typeof sendMessage === 'function') {
+          sendMessage(content);
+        }
+      } else {
+        console.error('Failed to send message via API');
+        
+        // Fallback to WebSocket only if API fails
+        if (isConnected && sendMessage && typeof sendMessage === 'function') {
+          sendMessage(content);
+        }
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      
+      // Fallback to WebSocket only
+      if (isConnected && sendMessage && typeof sendMessage === 'function') {
+        sendMessage(content);
+      }
     }
   };
 
@@ -280,15 +320,26 @@ export default function ChatWindow({
       <CardContent className="flex-1 flex flex-col p-0">
         <ScrollArea className="flex-1 px-4">
           <div className="space-y-4 py-4">
-            {messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                isOwn={message.userId === currentUserId}
-                senderName={message.userId === 'system' ? 'System' : `User ${message.userId}`}
-                senderId={message.userId}
-              />
-            ))}
+            {isLoadingMessages ? (
+              <div className="flex justify-center items-center h-32">
+                <div className="text-muted-foreground">Loading messages...</div>
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-32 text-center">
+                <div className="text-muted-foreground mb-2">No messages yet</div>
+                <div className="text-sm text-muted-foreground">Start a secure conversation</div>
+              </div>
+            ) : (
+              messages.map((message) => (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  isOwn={message.userId === currentUserId}
+                  senderName={message.userId === 'system' ? 'System' : `User ${message.userId}`}
+                  senderId={message.userId}
+                />
+              ))
+            )}
           </div>
         </ScrollArea>
 
