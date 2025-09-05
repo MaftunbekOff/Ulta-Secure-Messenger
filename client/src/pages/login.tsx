@@ -304,7 +304,7 @@ export default function Login() {
                   name="birthDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>📅 Tug'ilgan sana</FormLabel>
+                      <FormLabel>Tug'ilgan sana</FormLabel>
                       <FormControl>
                         <Input
                           type="text"
@@ -312,42 +312,9 @@ export default function Login() {
                           {...field}
                           data-testid="input-birth-date"
                           className="h-12 text-base"
-                          autoComplete="bday"
                         />
                       </FormControl>
                       <FormMessage />
-                      
-                      {/* Test uchun tugmalar */}
-                      <div className="flex gap-2 mt-2">
-                        <button
-                          type="button"
-                          onClick={() => field.onChange('15/01/1990')}
-                          className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                        >
-                          Test: 15/01/1990
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => field.onChange('03/12/2000')}
-                          className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
-                        >
-                          Test: 03/12/2000
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => field.onChange('25/08/1985')}
-                          className="px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded hover:bg-purple-200"
-                        >
-                          Test: 25/08/1985
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => field.onChange('')}
-                          className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
-                        >
-                          Tozalash
-                        </button>
-                      </div>
                     </FormItem>
                   )}
                 />
