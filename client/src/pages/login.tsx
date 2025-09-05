@@ -256,26 +256,31 @@ export default function Login() {
                 <FormField
                   control={registerForm.control}
                   name="birthDate"
-                  render={({ field: { onChange, onBlur, value, name, ref } }) => (
+                  render={({ field }) => (
                     <FormItem>
                       <FormLabel>📅 Tug'ilgan sana</FormLabel>
                       <FormControl>
                         <Input
                           type="date"
                           placeholder="YYYY-MM-DD"
-                          value={value || ''}
+                          value={field.value ?? ''}
                           onChange={(e) => {
-                            const newValue = e.target.value;
-                            onChange(newValue);
+                            const dateValue = e.target.value;
+                            console.log('🗓️ Date input changed:', dateValue);
+                            field.onChange(dateValue);
                           }}
-                          onBlur={onBlur}
-                          name={name}
-                          ref={ref}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
                           data-testid="input-birth-date"
                           className="h-12 text-base"
                           max={new Date().toISOString().split('T')[0]} // Past dates only
                           min="1900-01-01" // Minimum realistic birth date
-                          style={{ colorScheme: 'light dark' }} // Ensure date picker is visible
+                          style={{ 
+                            colorScheme: 'light',
+                            WebkitAppearance: 'none',
+                            MozAppearance: 'textfield'
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
