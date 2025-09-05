@@ -129,9 +129,30 @@ export const registerSchema = z.object({
   password: z.string().min(6),
   firstName: z.string().min(1).max(100).optional(),
   lastName: z.string().min(1).max(100).optional(),
-  birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
-    message: "Birth date must be in YYYY-MM-DD format"
-  }),
+  birthDate: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, {
+      message: "Tug'ilgan sana YYYY-MM-DD formatida bo'lishi kerak"
+    })
+    .refine((date) => {
+      const birthDate = new Date(date);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      // Exact age calculation
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        return age - 1 >= 13 && age - 1 <= 120;
+      }
+      return age >= 13 && age <= 120;
+    }, {
+      message: "Yosh 13 dan 120 gacha bo'lishi kerak"
+    })
+    .refine((date) => {
+      const birthDate = new Date(date);
+      return !isNaN(birthDate.getTime()); // Valid date check
+    }, {
+      message: "Yaroqli sana kiriting"
+    }),
 });
 
 // Profile schemas

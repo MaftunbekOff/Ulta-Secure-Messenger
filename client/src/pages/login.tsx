@@ -250,6 +250,7 @@ export default function Login() {
                           data-testid="input-birth-date"
                           className="h-12 text-base"
                           max={new Date().toISOString().split('T')[0]} // Past dates only
+                          min="1900-01-01" // Minimum realistic birth date
                         />
                       </FormControl>
                       <FormMessage />
