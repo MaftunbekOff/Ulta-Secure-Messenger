@@ -1,0 +1,39 @@
+Handled error: usernameStatus is not defined
+usernameStatus is not defined
+at Login (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/src/pages/login.tsx:644:45)
+at renderWithHooks (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=0fe63edd:11548:26)
+at updateFunctionComponent (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=0fe63edd:14582:28)
+at beginWork (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=0fe63edd:15924:22)
+at beginWork$1 (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=0fe63edd:19753:22)
+at performUnitOfWork (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=0fe63edd:19198:20)
+at workLoopSync (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=0fe63edd:19137:13)
+at renderRootSync (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=0fe63edd:19116:15)
+at recoverFromConcurrentError (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=0fe63edd:18736:28)
+at performSyncWorkOnRoot (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=0fe63edd:18879:28)
+The above error occurred in the <Login> component:
+
+    at Login (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/src/pages/login.tsx:33:33)
+    at Route (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=0fe63edd:323:16)
+    at Switch (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=0fe63edd:379:17)
+    at Router (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/src/App.tsx?t=1757064985981&v=ujX-BcVLuoC14tL2oxqb4:30:42)
+    at QueryClientProvider (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=0fe63edd:2805:3)
+    at App (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/src/App.tsx?t=1757064985981&v=ujX-BcVLuoC14tL2oxqb4:80:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+
+at Login (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/src/pages/login.tsx:33:33)
+at Route (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=0fe63edd:323:16)
+at Switch (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=0fe63edd:379:17)
+at Router (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/src/App.tsx?t=1757064985981&amp;v=ujX-BcVLuoC14tL2oxqb4:30:42)
+at QueryClientProvider (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=0fe63edd:2805:3)
+at App (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/src/App.tsx?t=1757064985981&amp;v=ujX-BcVLuoC14tL2oxqb4:80:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+at t.value (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://15a6916d-a3ba-4bad-a432-df8aac046876-00-2nt8q1g5nif1p.sisko.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
+usernameStatus is not defined
+Handled error: usernameStatus is not defined
