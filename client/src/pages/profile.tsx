@@ -70,14 +70,14 @@ export default function Profile() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  // Phone number validation function
+  // Phone number validation function with length limiting
   const validatePhoneNumber = useCallback((phoneNumber: string, countryCode: string) => {
     // Remove all non-digits
     const digits = phoneNumber.replace(/\D/g, '');
     
     if (digits.length === 0) {
       setPhoneValidationMessage("");
-      return true;
+      return { isValid: true, limitedPhone: phoneNumber };
     }
     
     const validationRules = {
@@ -121,34 +121,49 @@ export default function Profile() {
     };
     
     const rules = validationRules[countryCode as keyof typeof validationRules];
+    let maxLength = 15; // Default for generic countries
+    let minLength = 7;
+    
+    if (rules) {
+      maxLength = rules.maxLength;
+      minLength = rules.minLength;
+    }
+    
+    // Limit input to maximum allowed length
+    let limitedDigits = digits;
+    if (digits.length > maxLength) {
+      limitedDigits = digits.substring(0, maxLength);
+      setPhoneValidationMessage(`⚠️ Maksimal ${maxLength} ta raqam ruxsat etilgan`);
+      return { isValid: false, limitedPhone: limitedDigits };
+    }
+    
+    // Show progress counter when approaching limit
+    if (limitedDigits.length >= maxLength - 2 && limitedDigits.length < maxLength) {
+      const remaining = maxLength - limitedDigits.length;
+      setPhoneValidationMessage(`📊 ${limitedDigits.length}/${maxLength} - ${remaining} ta raqam qoldi`);
+      return { isValid: false, limitedPhone: limitedDigits };
+    }
     
     if (!rules) {
       // Generic validation for other countries
-      if (digits.length < 7 || digits.length > 15) {
-        setPhoneValidationMessage("⚠️ Telefon raqam uzunligi 7-15 raqam orasida bo'lishi kerak");
-        return false;
+      if (limitedDigits.length < minLength) {
+        setPhoneValidationMessage(`📊 ${limitedDigits.length}/${maxLength} - Kamida ${minLength} ta raqam kerak`);
+        return { isValid: false, limitedPhone: limitedDigits };
       }
-      setPhoneValidationMessage("");
-      return true;
+      setPhoneValidationMessage(`✅ To'g'ri telefon raqam (${limitedDigits.length}/${maxLength})`);
+      return { isValid: true, limitedPhone: limitedDigits };
     }
     
     let errorMessages = [];
     
     // Check length
-    if (digits.length < rules.minLength) {
-      errorMessages.push(`Kamida ${rules.minLength} ta raqam bo'lishi kerak`);
-    } else if (digits.length > rules.maxLength) {
-      errorMessages.push(`Ko'pi bilan ${rules.maxLength} ta raqam bo'lishi mumkin`);
-    }
-    
-    // Check pattern
-    if (!rules.pattern.test(digits)) {
-      errorMessages.push(`Noto'g'ri format. Misol: ${rules.format}`);
+    if (limitedDigits.length < rules.minLength) {
+      errorMessages.push(`${limitedDigits.length}/${rules.maxLength} - Kamida ${rules.minLength} ta raqam kerak`);
     }
     
     // Check valid starts for Uzbekistan
-    if (countryCode === "+998" && rules.validStarts && digits.length >= 2) {
-      const start = digits.substring(0, 2);
+    if (countryCode === "+998" && rules.validStarts && limitedDigits.length >= 2) {
+      const start = limitedDigits.substring(0, 2);
       if (!rules.validStarts.includes(start)) {
         errorMessages.push(`O'zbekiston raqami ${rules.validStarts.join(', ')} bilan boshlanishi kerak`);
       }
@@ -156,12 +171,12 @@ export default function Profile() {
     
     if (errorMessages.length > 0) {
       setPhoneValidationMessage(`⚠️ ${errorMessages.join(', ')}`);
-      return false;
+      return { isValid: false, limitedPhone: limitedDigits };
     }
     
-    // Success message
-    setPhoneValidationMessage("✅ To'g'ri telefon raqam");
-    return true;
+    // Success message with counter
+    setPhoneValidationMessage(`✅ To'g'ri telefon raqam (${limitedDigits.length}/${rules.maxLength})`);
+    return { isValid: true, limitedPhone: limitedDigits };
   }, []);
 
   // Debounced username availability check
@@ -756,7 +771,16 @@ export default function Profile() {
                                     
                                     // Validate with new country code
                                     if (currentPhoneOnly) {
-                                      validatePhoneNumber(currentPhoneOnly.replace(/\D/g, ''), newCountryCode);
+                                      const validationResult = validatePhoneNumber(currentPhoneOnly.replace(/\D/g, ''), newCountryCode);
+                                      // Use limited phone if validation cuts it
+                                      const limitedPhone = validationResult.limitedPhone;
+                                      if (limitedPhone !== currentPhoneOnly.replace(/\D/g, '')) {
+                                        // Re-format if phone was limited
+                                        const formattedLimited = limitedPhone;
+                                        const newFullNumber = formattedLimited ? `${newCountryCode} ${formattedLimited}` : newCountryCode;
+                                        field.onChange(newFullNumber);
+                                        return;
+                                      }
                                     }
                                     
                                     // Update with new country code
@@ -795,17 +819,17 @@ export default function Profile() {
                                   onChange={(e) => {
                                     // Format phone number and combine with country code
                                     const phoneNumber = e.target.value.replace(/\D/g, '');
-                                    let formattedPhone = phoneNumber;
                                     
-                                    // Validate phone number
-                                    validatePhoneNumber(phoneNumber, selectedCountryCode);
+                                    // Validate phone number and get limited version
+                                    const validationResult = validatePhoneNumber(phoneNumber, selectedCountryCode);
+                                    let formattedPhone = validationResult.limitedPhone;
                                     
                                     // Different formatting for different countries
-                                    if (phoneNumber.length > 0) {
+                                    if (formattedPhone.length > 0) {
                                       switch (selectedCountryCode) {
                                         case "+998": // Uzbekistan (90 123 45 67)
-                                          if (phoneNumber.length <= 9) {
-                                            formattedPhone = phoneNumber.replace(/(\d{2})(\d{0,3})(\d{0,2})(\d{0,2})/, (match, p1, p2, p3, p4) => {
+                                          if (formattedPhone.length <= 9) {
+                                            formattedPhone = formattedPhone.replace(/(\d{2})(\d{0,3})(\d{0,2})(\d{0,2})/, (match, p1, p2, p3, p4) => {
                                               let result = p1;
                                               if (p2) result += ' ' + p2;
                                               if (p3) result += ' ' + p3;
@@ -815,8 +839,8 @@ export default function Profile() {
                                           }
                                           break;
                                         case "+1": // USA/Canada (123) 456-7890
-                                          if (phoneNumber.length <= 10) {
-                                            formattedPhone = phoneNumber.replace(/(\d{3})(\d{0,3})(\d{0,4})/, (match, p1, p2, p3) => {
+                                          if (formattedPhone.length <= 10) {
+                                            formattedPhone = formattedPhone.replace(/(\d{3})(\d{0,3})(\d{0,4})/, (match, p1, p2, p3) => {
                                               let result = p1;
                                               if (p2) result += ' ' + p2;
                                               if (p3) result += ' ' + p3;
@@ -825,8 +849,8 @@ export default function Profile() {
                                           }
                                           break;
                                         case "+7": // Russia (123) 456-78-90
-                                          if (phoneNumber.length <= 10) {
-                                            formattedPhone = phoneNumber.replace(/(\d{3})(\d{0,3})(\d{0,2})(\d{0,2})/, (match, p1, p2, p3, p4) => {
+                                          if (formattedPhone.length <= 10) {
+                                            formattedPhone = formattedPhone.replace(/(\d{3})(\d{0,3})(\d{0,2})(\d{0,2})/, (match, p1, p2, p3, p4) => {
                                               let result = p1;
                                               if (p2) result += ' ' + p2;
                                               if (p3) result += ' ' + p3;
@@ -837,8 +861,8 @@ export default function Profile() {
                                           break;
                                         default:
                                           // Generic formatting for other countries
-                                          if (phoneNumber.length <= 12) {
-                                            formattedPhone = phoneNumber.replace(/(\d{1,3})(\d{0,3})(\d{0,3})(\d{0,3})/, (match, p1, p2, p3, p4) => {
+                                          if (formattedPhone.length <= 12) {
+                                            formattedPhone = formattedPhone.replace(/(\d{1,3})(\d{0,3})(\d{0,3})(\d{0,3})/, (match, p1, p2, p3, p4) => {
                                               let result = p1;
                                               if (p2) result += ' ' + p2;
                                               if (p3) result += ' ' + p3;
