@@ -302,42 +302,65 @@ export default function Login() {
                 <FormField
                   control={registerForm.control}
                   name="birthDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>📅 Tug'ilgan sana</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          placeholder="mm/dd/yyyy"
-                          value={field.value ? field.value.split('-').reverse().join('-').replace(/^(\d{2})-(\d{2})-(\d{4})$/, '$3-$1-$2') : ''}
-                          onChange={(e) => {
-                            const inputValue = e.target.value; // YYYY-MM-DD format
-                            if (inputValue) {
-                              // Convert YYYY-MM-DD to MM-DD-YYYY
-                              const [year, month, day] = inputValue.split('-');
-                              const formattedDate = `${month}-${day}-${year}`;
-                              console.log('🗓️ Date input changed:', inputValue, '-> formatted:', formattedDate);
-                              field.onChange(formattedDate);
-                            } else {
-                              field.onChange('');
-                            }
-                          }}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                          data-testid="input-birth-date"
-                          className="h-12 text-base cursor-pointer"
-                          max={new Date().toISOString().split('T')[0]} // Past dates only
-                          min="1900-01-01" // Minimum realistic birth date
-                          style={{ 
-                            colorScheme: 'auto'
-                          }}
-                          autoComplete="bday"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    // Convert MM-DD-YYYY back to YYYY-MM-DD for input display
+                    const getInputValue = () => {
+                      if (!field.value) return '';
+                      
+                      // Check if it's already in YYYY-MM-DD format (from date picker)
+                      if (/^\d{4}-\d{2}-\d{2}$/.test(field.value)) {
+                        return field.value;
+                      }
+                      
+                      // Convert MM-DD-YYYY to YYYY-MM-DD for input display
+                      if (/^\d{2}-\d{2}-\d{4}$/.test(field.value)) {
+                        const [month, day, year] = field.value.split('-');
+                        return `${year}-${month}-${day}`;
+                      }
+                      
+                      return '';
+                    };
+
+                    return (
+                      <FormItem>
+                        <FormLabel>📅 Tug'ilgan sana</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            placeholder="mm/dd/yyyy"
+                            value={getInputValue()}
+                            onChange={(e) => {
+                              const inputValue = e.target.value; // YYYY-MM-DD format from date picker
+                              console.log('🗓️ Date picker value:', inputValue);
+                              
+                              if (inputValue) {
+                                // Convert YYYY-MM-DD to MM-DD-YYYY for storage
+                                const [year, month, day] = inputValue.split('-');
+                                const formattedDate = `${month}-${day}-${year}`;
+                                console.log('🗓️ Converting to MM-DD-YYYY:', formattedDate);
+                                field.onChange(formattedDate);
+                              } else {
+                                console.log('🗓️ Clearing date field');
+                                field.onChange('');
+                              }
+                            }}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                            data-testid="input-birth-date"
+                            className="h-12 text-base cursor-pointer"
+                            max={new Date().toISOString().split('T')[0]} // Past dates only
+                            min="1900-01-01" // Minimum realistic birth date
+                            style={{ 
+                              colorScheme: 'auto'
+                            }}
+                            autoComplete="bday"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
 
                 <FormField
