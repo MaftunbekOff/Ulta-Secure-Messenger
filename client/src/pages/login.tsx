@@ -301,7 +301,7 @@ export default function Login() {
 
                 <div className="space-y-2">
                   <Label htmlFor="birth-date" className="text-sm font-medium">
-                    📅 Tug'ilgan sana
+                    📅 Date of birth
                   </Label>
                   <FormField
                     control={registerForm.control}
