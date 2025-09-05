@@ -5,8 +5,9 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Shield, Wifi, WifiOff, ArrowLeft, User } from 'lucide-react';
+import { Shield, Wifi, WifiOff, ArrowLeft, User, Settings } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import DevPanel from '@/components/dev/dev-panel';
 
 interface Message {
   id: string;
@@ -43,6 +44,7 @@ export default function ChatWindow({
   onBack 
 }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isDevPanelOpen, setIsDevPanelOpen] = useState(false);
   // Get the dynamic WebSocket URL based on current domain
   const getWebSocketUrl = () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -269,6 +271,17 @@ export default function ChatWindow({
                 <span className="text-red-500">Ulanmagan</span>
               </>
             )}
+            {/* Dev Panel Toggle Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsDevPanelOpen(true)}
+              className="p-1 h-6 w-6 ml-2"
+              title="Developer Tools"
+              data-testid="dev-panel-button"
+            >
+              <Settings className="h-3 w-3" />
+            </Button>
           </div>
         </CardTitle>
       </CardHeader>
@@ -295,6 +308,21 @@ export default function ChatWindow({
           />
         </div>
       </CardContent>
+
+      {/* Dev Panel */}
+      <DevPanel
+        isOpen={isDevPanelOpen}
+        onClose={() => setIsDevPanelOpen(false)}
+        currentMessages={messages.map(msg => ({
+          id: msg.id,
+          content: msg.content,
+          encrypted: msg.encrypted,
+          originalContent: msg.content,
+          encryptedContent: msg.encrypted ? `🔒 ENCRYPTED_${msg.id}_${btoa(msg.content).substring(0, 20)}...` : undefined
+        }))}
+        connectionStatus={connectionStatus}
+        isConnected={isConnected}
+      />
     </Card>
   );
 }
