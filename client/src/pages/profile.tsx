@@ -16,6 +16,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { getAuthHeaders } from "@/lib/authUtils";
 import { updateProfileSchema, changePasswordSchema, type UpdateProfileData, type ChangePasswordData } from "@shared/schema";
 import { useLocation } from "wouter";
+import { useCallback, useRef } from "react";
+import { apiRequest } from "@/lib/queryClient";
 
 // Country codes data
 const countryCodes = [
@@ -52,6 +54,45 @@ export default function Profile() {
   
   const [selectedCountryCode, setSelectedCountryCode] = useState(initializeCountryCode);
   const [usernameValidationMessage, setUsernameValidationMessage] = useState("");
+  const [usernameAvailabilityMessage, setUsernameAvailabilityMessage] = useState("");
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounced username availability check
+  const checkUsernameAvailability = useCallback(
+    async (username: string) => {
+      if (username.length < 3) {
+        setUsernameAvailabilityMessage("");
+        return;
+      }
+
+      // Remove @ symbol for API call
+      const cleanUsername = username.startsWith('@') ? username.slice(1) : username;
+      
+      if (cleanUsername.length < 3) {
+        setUsernameAvailabilityMessage("");
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/auth/check-username/${cleanUsername}`, {
+          headers: getAuthHeaders(),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.available) {
+            setUsernameAvailabilityMessage("✅ Username mavjud");
+          } else {
+            setUsernameAvailabilityMessage("❌ Username band qilingan");
+          }
+        }
+      } catch (error) {
+        console.error("Username check failed:", error);
+        setUsernameAvailabilityMessage("");
+      }
+    },
+    []
+  );
 
   const profileForm = useForm<UpdateProfileData>({
     resolver: zodResolver(updateProfileSchema),
@@ -397,8 +438,21 @@ export default function Profile() {
                                   // Set validation message
                                   if (validationMessages.length > 0) {
                                     setUsernameValidationMessage(`⚠️ ${validationMessages.join(', ')}`);
+                                    setUsernameAvailabilityMessage(""); // Clear availability check during validation errors
                                   } else {
                                     setUsernameValidationMessage("");
+                                    
+                                    // Clear previous timeout
+                                    if (timeoutRef.current) {
+                                      clearTimeout(timeoutRef.current);
+                                    }
+                                    
+                                    // Check username availability after a delay (debouncing)
+                                    timeoutRef.current = setTimeout(() => {
+                                      if (finalValue && finalValue.length > 3) {
+                                        checkUsernameAvailability(finalValue);
+                                      }
+                                    }, 500); // 500ms debounce
                                   }
                                   
                                   // Apply username validation rules
@@ -426,6 +480,15 @@ export default function Profile() {
                             {usernameValidationMessage && (
                               <div className="text-sm text-amber-600 dark:text-amber-400 mt-1">
                                 {usernameValidationMessage}
+                              </div>
+                            )}
+                            {usernameAvailabilityMessage && (
+                              <div className={`text-sm mt-1 ${
+                                usernameAvailabilityMessage.includes('✅') 
+                                  ? 'text-green-600 dark:text-green-400' 
+                                  : 'text-red-600 dark:text-red-400'
+                              }`}>
+                                {usernameAvailabilityMessage}
                               </div>
                             )}
                             <FormMessage />
