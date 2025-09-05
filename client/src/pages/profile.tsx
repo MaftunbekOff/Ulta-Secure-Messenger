@@ -51,6 +51,7 @@ export default function Profile() {
   };
   
   const [selectedCountryCode, setSelectedCountryCode] = useState(initializeCountryCode);
+  const [usernameValidationMessage, setUsernameValidationMessage] = useState("");
 
   const profileForm = useForm<UpdateProfileData>({
     resolver: zodResolver(updateProfileSchema),
@@ -363,9 +364,42 @@ export default function Profile() {
                                 className="h-12 text-base"
                                 onChange={(e) => {
                                   let value = e.target.value;
+                                  let originalInput = value.startsWith('@') ? value.slice(1) : value;
                                   
                                   // Remove @ prefix temporarily for filtering
                                   let username = value.startsWith('@') ? value.slice(1) : value;
+                                  
+                                  // Check for invalid characters and provide feedback
+                                  const invalidChars = originalInput.match(/[^a-zA-Z0-9_]/g);
+                                  const startsWithNumber = /^[0-9]/.test(originalInput);
+                                  const startsWithUnderscore = /^_/.test(originalInput);
+                                  const hasConsecutiveUnderscores = /__+/.test(originalInput);
+                                  
+                                  let validationMessages = [];
+                                  
+                                  if (invalidChars && invalidChars.length > 0) {
+                                    const uniqueInvalidChars = [...new Set(invalidChars)].join(', ');
+                                    validationMessages.push(`"${uniqueInvalidChars}" belgilar ishlatilmaydi`);
+                                  }
+                                  
+                                  if (startsWithNumber) {
+                                    validationMessages.push("Raqam bilan boshlanmasligi kerak");
+                                  }
+                                  
+                                  if (startsWithUnderscore) {
+                                    validationMessages.push("Pastki chiziq bilan boshlanmasligi kerak");
+                                  }
+                                  
+                                  if (hasConsecutiveUnderscores) {
+                                    validationMessages.push("Ketma-ket pastki chiziq ishlatilmaydi");
+                                  }
+                                  
+                                  // Set validation message
+                                  if (validationMessages.length > 0) {
+                                    setUsernameValidationMessage(`⚠️ ${validationMessages.join(', ')}`);
+                                  } else {
+                                    setUsernameValidationMessage("");
+                                  }
                                   
                                   // Apply username validation rules
                                   // Remove all characters that are not letters, numbers, or underscores
@@ -389,6 +423,11 @@ export default function Profile() {
                                 }}
                               />
                             </FormControl>
+                            {usernameValidationMessage && (
+                              <div className="text-sm text-amber-600 dark:text-amber-400 mt-1">
+                                {usernameValidationMessage}
+                              </div>
+                            )}
                             <FormMessage />
                           </FormItem>
                         )}
