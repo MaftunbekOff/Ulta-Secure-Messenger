@@ -303,17 +303,28 @@ export default function Login() {
                   <Label htmlFor="birth-date" className="text-sm font-medium">
                     📅 Tug'ilgan sana
                   </Label>
-                  <Input
-                    id="birth-date"
-                    type="date"
-                    placeholder="YYYY-MM-DD"
-                    className="h-12 text-base w-full rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white px-4 py-3 text-center sm:text-left"
-                    data-testid="input-birth-date"
+                  <FormField
+                    control={registerForm.control}
+                    name="birthDate"
+                    render={({ field }) => (
+                      <DatePicker
+                        id="birth-date"
+                        selected={birthDate}
+                        onChange={(date) => {
+                          setBirthDate(date);
+                          field.onChange(date);
+                        }}
+                        placeholderText="YYYY-MM-DD"
+                        className="h-12 text-base w-full rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white px-4 py-3 text-center sm:text-left"
+                        data-testid="input-birth-date"
+                      />
+                    )}
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     🖥️ Desktop va 📱 Mobile-da ishlaydi
                   </p>
                 </div>
+
 
                 <FormField
                   control={registerForm.control}
