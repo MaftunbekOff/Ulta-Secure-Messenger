@@ -739,11 +739,18 @@ export default function Profile() {
           .filter(country => !country.hidden)
           .sort((a, b) => b.code.length - a.code.length); // Longer codes first to avoid conflicts
         
+        let foundCountry = false;
         for (const country of sortedCodes) {
           if (user.phoneNumber.startsWith(country.code)) {
             setSelectedCountryCode(country.code);
+            foundCountry = true;
             break;
           }
+        }
+        
+        // If no country code found, default to +998
+        if (!foundCountry) {
+          setSelectedCountryCode("+998");
         }
       } else {
         // Default to Uzbekistan if no phone number
@@ -1078,9 +1085,18 @@ export default function Profile() {
                     <p className="text-muted-foreground" data-testid="profile-username">
                       {user?.displayUsername || `@${user?.username}`}
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      📱 {user?.phoneNumber || "Telefon qo'shilmagan"}
-                    </p>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>📱</span>
+                      {user?.phoneNumber ? (
+                        <span className="font-medium text-green-600 dark:text-green-400">
+                          {user.phoneNumber}
+                        </span>
+                      ) : (
+                        <span className="text-amber-600 dark:text-amber-400">
+                          Telefon raqam kiritilmagan
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-muted-foreground">
                       🎂 {user?.birthDate || "Tug'ilgan sana kiritilmagan"}
                     </p>
@@ -1209,13 +1225,15 @@ export default function Profile() {
                                 <Input
                                   type="tel"
                                   placeholder={
+                                    user?.phoneNumber && field.value ? 
+                                      "Joriy raqamni o'zgartiring" :
                                     selectedCountryCode === "+998" ? "90 123 45 67" :
                                     selectedCountryCode === "+1" ? "123 456 7890" :
                                     selectedCountryCode === "+7" ? "123 456 78 90" :
                                     selectedCountryCode === "+44" ? "20 1234 5678" :
                                     selectedCountryCode === "+49" ? "30 12345678" :
                                     selectedCountryCode === "+33" ? "1 23 45 67 89" :
-                                    "Phone number"
+                                    "Telefon raqam kiriting"
                                   }
                                   {...field}
                                   data-testid="input-phone-number"
@@ -1281,7 +1299,7 @@ export default function Profile() {
                                     field.onChange(fullNumber);
                                   }}
                                   value={(() => {
-                                    const currentValue = field.value || '';
+                                    const currentValue = field.value || user?.phoneNumber || '';
                                     // Remove country code and extra spaces to show only phone digits
                                     const phoneOnly = currentValue.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}\\s*`), '').trim();
                                     return phoneOnly;
