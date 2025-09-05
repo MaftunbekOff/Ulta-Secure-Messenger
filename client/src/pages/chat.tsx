@@ -107,7 +107,7 @@ const useChatContext = () => {
 
 
 export default function Chat() {
-  const [selectedChatId, setSelectedChatId] = useState<string | null>("default-chat");
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -212,14 +212,13 @@ export default function Chat() {
     }
   };
 
-  // Auto-select first chat when available
-  useEffect(() => {
-    // If no chat is selected or we have the default, try to select the first actual chat
-    if (selectedChatId === "default-chat" || !selectedChatId) {
-      // This will be handled by the sidebar when it loads chats
-      // For now, keep default to show chat window
-    }
-  }, [selectedChatId]);
+  // Auto-select first chat when available - commented out for now
+  // useEffect(() => {
+  //   // If no chat is selected and we have chats, auto-select first one
+  //   if (!selectedChatId && chats && chats.length > 0) {
+  //     setSelectedChatId(chats[0].id);
+  //   }
+  // }, [selectedChatId, chats]);
 
   // Function to handle sending messages with advanced security features
   const sendMessage = async (content: string, recipientPublicKey: string) => {
