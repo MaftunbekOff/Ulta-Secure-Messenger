@@ -1225,8 +1225,8 @@ export default function Profile() {
                                 <Input
                                   type="tel"
                                   placeholder={
-                                    user?.phoneNumber && field.value ? 
-                                      "Joriy raqamni o'zgartiring" :
+                                    user?.phoneNumber ? 
+                                      "Amaldagi raqamni o'zgartiring" :
                                     selectedCountryCode === "+998" ? "90 123 45 67" :
                                     selectedCountryCode === "+1" ? "123 456 7890" :
                                     selectedCountryCode === "+7" ? "123 456 78 90" :
@@ -1235,7 +1235,6 @@ export default function Profile() {
                                     selectedCountryCode === "+33" ? "1 23 45 67 89" :
                                     "Telefon raqam kiriting"
                                   }
-                                  {...field}
                                   data-testid="input-phone-number"
                                   className="h-12 text-base flex-1"
                                   onChange={(e) => {
@@ -1299,10 +1298,26 @@ export default function Profile() {
                                     field.onChange(fullNumber);
                                   }}
                                   value={(() => {
-                                    const currentValue = field.value || user?.phoneNumber || '';
-                                    // Remove country code and extra spaces to show only phone digits
-                                    const phoneOnly = currentValue.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}\\s*`), '').trim();
-                                    return phoneOnly;
+                                    // Agar form value mavjud bo'lsa, uni ishlatamiz
+                                    if (field.value && field.value !== selectedCountryCode) {
+                                      const phoneOnly = field.value.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}\\s*`), '').trim();
+                                      return phoneOnly;
+                                    }
+                                    
+                                    // Agar user ning telefon raqami mavjud bo'lsa va selected country code bilan mos kelsa
+                                    if (user?.phoneNumber && user.phoneNumber.startsWith(selectedCountryCode)) {
+                                      const phoneOnly = user.phoneNumber.replace(new RegExp(`^${selectedCountryCode.replace('+', '\\+')}\\s*`), '').trim();
+                                      
+                                      // Form value ni ham yangilaymiz
+                                      if (!field.value || field.value === selectedCountryCode) {
+                                        setTimeout(() => field.onChange(user.phoneNumber), 0);
+                                      }
+                                      
+                                      return phoneOnly;
+                                    }
+                                    
+                                    // Aks holda bo'sh string qaytaramiz
+                                    return '';
                                   })()}
                                 />
                               </div>
