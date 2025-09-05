@@ -296,6 +296,17 @@ export default function Login() {
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="empty-input">Date of birth</Label>
+                  <Input
+                    id="empty-input"
+                    type="text"
+                    placeholder="Bu yerga hech narsa kiritmang"
+                    className="h-12 text-base"
+                    data-testid="input-empty"
+                  />
+                </div>
+
                 <FormField
                   control={registerForm.control}
                   name="email"
@@ -314,17 +325,6 @@ export default function Login() {
                     </FormItem>
                   )}
                 />
-
-                <div className="space-y-2">
-                  <Label htmlFor="empty-input">Date of birth</Label>
-                  <Input
-                    id="empty-input"
-                    type="text"
-                    placeholder="Bu yerga hech narsa kiritmang"
-                    className="h-12 text-base"
-                    data-testid="input-empty"
-                  />
-                </div>
 
                 <FormField
                   control={registerForm.control}
