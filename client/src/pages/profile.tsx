@@ -415,6 +415,7 @@ export default function Profile() {
                                   const startsWithNumber = /^[0-9]/.test(originalInput);
                                   const startsWithUnderscore = /^_/.test(originalInput);
                                   const hasConsecutiveUnderscores = /__+/.test(originalInput);
+                                  const endsWithUnderscore = /_$/.test(originalInput) && originalInput.length > 1;
                                   
                                   let validationMessages = [];
                                   
@@ -433,6 +434,10 @@ export default function Profile() {
                                   
                                   if (hasConsecutiveUnderscores) {
                                     validationMessages.push("Ketma-ket pastki chiziq ishlatilmaydi");
+                                  }
+                                  
+                                  if (endsWithUnderscore) {
+                                    validationMessages.push("Pastki chiziq bilan tugamasligi kerak");
                                   }
                                   
                                   // Set validation message
@@ -464,12 +469,6 @@ export default function Profile() {
                                   
                                   // Prevent consecutive underscores by replacing multiple underscores with single one
                                   username = username.replace(/_+/g, '_');
-                                  
-                                  // Remove trailing underscore only if the input doesn't end with a single underscore
-                                  // This allows users to type underscores normally
-                                  if (username.endsWith('_') && !value.endsWith('_')) {
-                                    username = username.replace(/_$/, '');
-                                  }
                                   
                                   // Add @ prefix back
                                   const finalValue = username.length > 0 ? '@' + username : '';
