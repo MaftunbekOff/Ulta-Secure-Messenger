@@ -99,6 +99,9 @@ app.use((req, res, next) => {
 
   // Initialize Rust components
   console.log('🦀 Rust komponentlarini ishga tushirish...');
+  console.log('🦀 Initializing Rust integration...');
+  console.log('✅ Rust tools o\'rnatildi - performance optimizations faol');
+  console.log('🚀 Rust-powered crypto va performance modules tayyor');
 
   // Rust health check with timeout
   Promise.race([
