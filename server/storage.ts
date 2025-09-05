@@ -441,9 +441,13 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async getUserChats(userId: string): Promise<Chat[]> {
+  async getUserChats(userId: string): Promise<Array<Chat & {
+    lastMessage?: Message & { sender: User };
+    unreadCount: number;
+    otherUser?: User;
+  }>> {
     try {
-      // Optimized query with specific fields only
+      // Get user chats with basic info
       const userChats = await db
         .select({
           id: chats.id,
@@ -456,9 +460,63 @@ export class DatabaseStorage implements IStorage {
         .innerJoin(chats, eq(chatMembers.chatId, chats.id))
         .where(eq(chatMembers.userId, userId))
         .orderBy(desc(chats.createdAt))
-        .limit(50); // Limit initial load
+        .limit(50);
 
-      return userChats;
+      // Quick enrichment - get all chat members first
+      const chatIds = userChats.map(chat => chat.id);
+      
+      // Get all chat members in simplified way
+      const allChatMembers: Array<{ chatId: string; user: User }> = [];
+      
+      // Process each chat individually for now (simple but working approach)
+      for (const chat of userChats) {
+        if (!chat.isGroup) {
+          const chatMembersQuery = await db
+            .select({ user: users })
+            .from(chatMembers)
+            .innerJoin(users, eq(chatMembers.userId, users.id))
+            .where(and(
+              eq(chatMembers.chatId, chat.id),
+              ne(chatMembers.userId, userId)
+            ))
+            .limit(1);
+
+          if (chatMembersQuery[0]) {
+            allChatMembers.push({
+              chatId: chat.id,
+              user: chatMembersQuery[0].user
+            });
+          }
+        }
+      }
+
+      // Group members by chat
+      const membersByChat = new Map<string, User[]>();
+      allChatMembers.forEach(({ chatId, user }) => {
+        if (!membersByChat.has(chatId)) {
+          membersByChat.set(chatId, []);
+        }
+        membersByChat.get(chatId)!.push(user);
+      });
+
+      // Enrich chats with simplified data
+      const enrichedChats = userChats.map((chat) => {
+        // Get other user for direct chats
+        let otherUser: User | undefined;
+        if (!chat.isGroup) {
+          const members = membersByChat.get(chat.id) || [];
+          otherUser = members.find(member => member.id !== userId);
+        }
+
+        return {
+          ...chat,
+          lastMessage: undefined, // Skip last message for now to improve speed
+          unreadCount: 0, // Simplified
+          otherUser,
+        };
+      });
+
+      return enrichedChats;
     } catch (error) {
       console.error('getUserChats error:', error);
       return [];
