@@ -444,6 +444,12 @@ export default function Profile() {
                                   if (validationMessages.length > 0) {
                                     setUsernameValidationMessage(`⚠️ ${validationMessages.join(', ')}`);
                                     setUsernameAvailabilityMessage(""); // Clear availability check during validation errors
+                                    
+                                    // Clear any pending availability check timeout
+                                    if (timeoutRef.current) {
+                                      clearTimeout(timeoutRef.current);
+                                      timeoutRef.current = null;
+                                    }
                                   } else {
                                     setUsernameValidationMessage("");
                                     
