@@ -331,16 +331,25 @@ export const registerSchema = z.object({
   password: z.string().min(6),
   firstName: z.string().min(1).max(100).optional(),
   lastName: z.string().min(1).max(100).optional(),
-  birthDate: z.string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, {
-      message: "Tug'ilgan sana YYYY-MM-DD formatida bo'lishi kerak"
-    })
-    .refine((date) => {
-      const birthDate = new Date(date);
+  birthDate: z.string().min(1, "Birth date is required").regex(
+    /^\d{2}-\d{2}-\d{4}$/,
+    "Birth date must be in MM-DD-YYYY format"
+  ).refine((date) => {
+      const [month, day, year] = date.split('-').map(Number);
+      const birthDate = new Date(year, month - 1, day); // Month is 0-indexed
       const today = new Date();
+
+      // Check if date parts are valid numbers and if they reconstruct the same date
+      if (isNaN(birthDate.getTime()) ||
+          birthDate.getFullYear() !== year ||
+          birthDate.getMonth() !== month - 1 ||
+          birthDate.getDate() !== day) {
+          return false;
+      }
+
       const age = today.getFullYear() - birthDate.getFullYear();
       const monthDiff = today.getMonth() - birthDate.getMonth();
-      
+
       // Exact age calculation
       if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
         return age - 1 >= 13 && age - 1 <= 120;
@@ -348,12 +357,6 @@ export const registerSchema = z.object({
       return age >= 13 && age <= 120;
     }, {
       message: "Yosh 13 dan 120 gacha bo'lishi kerak"
-    })
-    .refine((date) => {
-      const birthDate = new Date(date);
-      return !isNaN(birthDate.getTime()); // Valid date check
-    }, {
-      message: "Yaroqli sana kiriting"
     }),
 });
 
@@ -365,25 +368,25 @@ export const updateProfileSchema = z.object({
   phoneNumber: z.string().max(20).optional().or(z.literal("")).or(z.undefined()),
   displayUsername: z.string().optional().or(z.literal("")).or(z.undefined()).refine((val) => {
     if (!val || val === "") return true; // Empty values are allowed
-    
+
     // Remove @ prefix for validation if present
     const username = val.startsWith('@') ? val.slice(1) : val;
-    
+
     // Check length (5-32 characters after @)
     if (username.length < 5 || username.length > 32) return false;
-    
+
     // Must start with letter
     if (!/^[a-zA-Z]/.test(username)) return false;
-    
+
     // Only letters, numbers, and underscores allowed
     if (!/^[a-zA-Z0-9_]+$/.test(username)) return false;
-    
+
     // Cannot have consecutive underscores
     if (/__/.test(username)) return false;
-    
+
     // Cannot end with underscore
     if (username.endsWith('_')) return false;
-    
+
     return true;
   }, {
     message: "Username must be 5-32 characters, start with letter, contain only letters/numbers/underscores, no consecutive underscores, and not end with underscore"

@@ -308,11 +308,19 @@ export default function Login() {
                       <FormControl>
                         <Input
                           type="date"
-                          placeholder="dd/mm/yyyy"
-                          value={field.value || ''}
+                          placeholder="mm/dd/yyyy"
+                          value={field.value ? field.value.split('-').reverse().join('-').replace(/^(\d{2})-(\d{2})-(\d{4})$/, '$3-$1-$2') : ''}
                           onChange={(e) => {
-                            console.log('🗓️ Date input changed:', e.target.value);
-                            field.onChange(e.target.value);
+                            const inputValue = e.target.value; // YYYY-MM-DD format
+                            if (inputValue) {
+                              // Convert YYYY-MM-DD to MM-DD-YYYY
+                              const [year, month, day] = inputValue.split('-');
+                              const formattedDate = `${month}-${day}-${year}`;
+                              console.log('🗓️ Date input changed:', inputValue, '-> formatted:', formattedDate);
+                              field.onChange(formattedDate);
+                            } else {
+                              field.onChange('');
+                            }
                           }}
                           onBlur={field.onBlur}
                           name={field.name}
