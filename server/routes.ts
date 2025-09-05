@@ -386,6 +386,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profileImageUrl
       });
 
+      // Ensure JSON response
+      res.setHeader('Content-Type', 'application/json');
       res.json({
         message: "Avatar uploaded successfully",
         profileImageUrl,
@@ -404,6 +406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Avatar upload error:', error);
+      res.setHeader('Content-Type', 'application/json');
       res.status(500).json({ message: error.message || "Failed to upload avatar" });
     }
   });

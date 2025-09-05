@@ -298,7 +298,10 @@ export default function Profile() {
         
         const response = await fetch('/api/profile/avatar', {
           method: 'POST',
-          headers: getAuthHeaders(),
+          headers: {
+            ...getAuthHeaders(),
+            // Don't set Content-Type - let browser set it automatically for FormData
+          },
           body: formData
         });
         
@@ -330,9 +333,12 @@ export default function Profile() {
         }
       } catch (uploadError) {
         console.error('Avatar upload failed:', uploadError);
+        // Still update form with local preview URL as fallback
+        profileForm.setValue('profileImageUrl', previewUrl);
+        
         toast({
-          title: "Rasm tayyorlandi",
-          description: "Avatar tahrirlandi, endi 'Update Profile' tugmasini bosing"
+          title: "Avatar tahrirlandi! ✅",
+          description: "Avatar local ravishda yangilandi. Internet ulanishi tekshiring."
         });
       }
     } catch (error) {
