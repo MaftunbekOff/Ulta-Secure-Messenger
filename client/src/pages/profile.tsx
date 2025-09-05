@@ -377,8 +377,11 @@ export default function Profile() {
                                   // Prevent consecutive underscores by replacing multiple underscores with single one
                                   username = username.replace(/_+/g, '_');
                                   
-                                  // Remove trailing underscore
-                                  username = username.replace(/_$/, '');
+                                  // Remove trailing underscore only if the input doesn't end with a single underscore
+                                  // This allows users to type underscores normally
+                                  if (username.endsWith('_') && !value.endsWith('_')) {
+                                    username = username.replace(/_$/, '');
+                                  }
                                   
                                   // Add @ prefix back
                                   const finalValue = username.length > 0 ? '@' + username : '';
