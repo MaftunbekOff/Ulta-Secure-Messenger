@@ -263,7 +263,13 @@ export default function Login() {
                         <Input
                           type="date"
                           placeholder="YYYY-MM-DD"
-                          {...field}
+                          value={field.value || ''}
+                          onChange={(e) => {
+                            field.onChange(e.target.value);
+                          }}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
                           data-testid="input-birth-date"
                           className="h-12 text-base"
                           max={new Date().toISOString().split('T')[0]} // Past dates only
