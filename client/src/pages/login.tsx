@@ -309,7 +309,14 @@ export default function Login() {
                         <Input
                           type="date"
                           placeholder="dd/mm/yyyy"
-                          {...field}
+                          value={field.value || ''}
+                          onChange={(e) => {
+                            console.log('🗓️ Date input changed:', e.target.value);
+                            field.onChange(e.target.value);
+                          }}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
                           data-testid="input-birth-date"
                           className="h-12 text-base cursor-pointer"
                           max={new Date().toISOString().split('T')[0]} // Past dates only
