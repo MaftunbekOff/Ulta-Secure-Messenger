@@ -307,51 +307,15 @@ export default function Login() {
                       <FormLabel>📅 Tug'ilgan sana</FormLabel>
                       <FormControl>
                         <Input
-                          type="text"
-                          placeholder="DD/MM/YYYY"
+                          type="date"
                           value={field.value || ''}
-                          onChange={(e) => {
-                            let inputValue = e.target.value;
-                            console.log('🗓️ Manual date input:', inputValue);
-                            
-                            // Agar backspace bosilgan bo'lsa, input qiymatini o'zgarmasdan qoldirish
-                            if (inputValue.length < (field.value || '').length) {
-                              field.onChange(inputValue);
-                              return;
-                            }
-                            
-                            // Remove all non-digit characters first
-                            let digitsOnly = inputValue.replace(/\D/g, '');
-                            console.log('🗓️ Digits only:', digitsOnly);
-                            
-                            // Limit to 8 digits maximum (DDMMYYYY)
-                            digitsOnly = digitsOnly.slice(0, 8);
-                            
-                            // Format as DD/MM/YYYY
-                            let formattedValue = '';
-                            if (digitsOnly.length > 0) {
-                              // Add day (DD)
-                              formattedValue = digitsOnly.slice(0, 2);
-                              if (digitsOnly.length > 2) {
-                                // Add month (MM)
-                                formattedValue += '/' + digitsOnly.slice(2, 4);
-                                if (digitsOnly.length > 4) {
-                                  // Add year (YYYY)
-                                  formattedValue += '/' + digitsOnly.slice(4, 8);
-                                }
-                              }
-                            }
-                            
-                            console.log('🗓️ Formatted date:', formattedValue);
-                            field.onChange(formattedValue);
-                          }}
+                          onChange={field.onChange}
                           onBlur={field.onBlur}
                           name={field.name}
                           ref={field.ref}
                           data-testid="input-birth-date"
                           className="h-12 text-base"
                           autoComplete="bday"
-                          maxLength={10}
                         />
                       </FormControl>
                       <FormMessage />
