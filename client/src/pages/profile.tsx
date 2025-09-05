@@ -303,20 +303,30 @@ export default function Profile() {
         });
         
         if (response.ok) {
-          const data = await response.json();
-          
-          // Update profile form with new avatar URL
-          profileForm.setValue('profileImageUrl', data.profileImageUrl);
-          
-          // Refresh user data to show new avatar everywhere
-          await refreshUser();
-          
-          toast({
-            title: "Avatar yangilandi! ✅",
-            description: "Rasm muvaffaqiyatli yuklandi va profil avatari yangilandi"
-          });
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            
+            // Update profile form with new avatar URL
+            profileForm.setValue('profileImageUrl', data.profileImageUrl);
+            
+            // Refresh user data to show new avatar everywhere
+            await refreshUser();
+            
+            toast({
+              title: "Avatar yangilandi! ✅",
+              description: "Rasm muvaffaqiyatli yuklandi va profil avatari yangilandi"
+            });
+          } else {
+            // Server returned HTML or non-JSON response
+            const responseText = await response.text();
+            console.error('Non-JSON response:', responseText);
+            throw new Error('Server returned invalid response format');
+          }
         } else {
-          throw new Error('Upload failed');
+          const errorText = await response.text();
+          console.error('Upload failed with status:', response.status, errorText);
+          throw new Error(`Upload failed: ${response.status}`);
         }
       } catch (uploadError) {
         console.error('Avatar upload failed:', uploadError);

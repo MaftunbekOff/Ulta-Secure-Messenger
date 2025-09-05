@@ -350,7 +350,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Avatar upload endpoint
-  app.post('/api/profile/avatar', authenticate, avatarUpload.single('avatar'), async (req: AuthenticatedRequest, res) => {
+  app.post('/api/profile/avatar', authenticate, (req, res, next) => {
+    avatarUpload.single('avatar')(req, res, (err) => {
+      if (err) {
+        console.error('Multer error:', err);
+        return res.status(400).json({ message: err.message || "File upload failed" });
+      }
+      next();
+    });
+  }, async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No image file provided" });
