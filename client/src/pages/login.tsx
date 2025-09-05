@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -56,6 +56,21 @@ export default function Login() {
     criteriaMode: "all",
   });
 
+  // Form qiymatlari o'zgarganda console-ga chiqarish
+  const watchedValues = registerForm.watch();
+  React.useEffect(() => {
+    console.log('📝 Ro\'yxatdan o\'tish formasi o\'zgarishi:', {
+      firstName: watchedValues.firstName || 'Bo\'sh',
+      lastName: watchedValues.lastName || 'Bo\'sh',
+      email: watchedValues.email || 'Bo\'sh',
+      birthDate: watchedValues.birthDate || 'Bo\'sh',
+      password: watchedValues.password ? `${watchedValues.password.length} ta belgi` : 'Bo\'sh',
+      formValid: registerForm.formState.isValid ? 'Ha' : 'Yo\'q',
+      errors: Object.keys(registerForm.formState.errors).length > 0 ? 
+        Object.keys(registerForm.formState.errors) : 'Xatolik yo\'q'
+    });
+  }, [watchedValues, registerForm.formState.isValid, registerForm.formState.errors]);
+
 
   const handleLogin = async (data: LoginData) => {
     try {
@@ -79,23 +94,54 @@ export default function Login() {
 
 
   const handleRegister = async (data: RegisterData) => {
+    console.log('🚀 Ro\'yxatdan o\'tish jarayoni boshlandi');
+    console.log('📋 Kiritilgan ma\'lumotlar:', {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      birthDate: data.birthDate,
+      password: data.password ? '****** (yashirin)' : 'Bo\'sh',
+      passwordLength: data.password?.length || 0
+    });
+
     try {
       // Generate auto username from email
       const autoUsername = data.email.split('@')[0] + '_' + Math.random().toString(36).substr(2, 4);
+      console.log('👤 Avtomatik username yaratildi:', autoUsername);
+      
       const registerData = { ...data, username: autoUsername };
+      console.log('📦 Serverga yuborilayotgan to\'liq ma\'lumotlar:', {
+        ...registerData,
+        password: '****** (yashirin)'
+      });
+
+      console.log('🌐 Server bilan bog\'lanmoqda...');
       await register.mutateAsync(registerData);
+      console.log('✅ Server javob berdi - ro\'yxatdan o\'tish muvaffaqiyatli!');
 
       // Store email for future use
       localStorage.setItem('lastLoginEmail', data.email);
+      console.log('💾 Email localStorage-ga saqlandi:', data.email);
 
       // Security event logged internally
+      console.log('🔐 Xavfsizlik voqeasi loglandi');
 
+      console.log('🎉 Foydalanuvchi muvaffaqiyatli ro\'yxatdan o\'tdi!');
       toast({
         title: "🛡️ Ultra-secure account created!",
         description: "You now have military-grade encryption protection.",
       });
+      console.log('🏠 Chat sahifasiga yo\'naltirilmoqda...');
       setLocation("/");
     } catch (error: any) {
+      console.error('❌ Ro\'yxatdan o\'tishda xatolik:', error);
+      console.error('❌ Xatolik tafsilotlari:', {
+        message: error.message,
+        status: error.status,
+        statusText: error.statusText,
+        stack: error.stack
+      });
+      
       toast({
         title: "Error",
         description: error.message || "Registration failed. Please try again.",
