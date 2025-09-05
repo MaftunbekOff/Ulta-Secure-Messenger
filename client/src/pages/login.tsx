@@ -66,7 +66,7 @@ export default function Login() {
       birthDate: watchedValues.birthDate || 'Bo\'sh',
       password: watchedValues.password ? `${watchedValues.password.length} ta belgi` : 'Bo\'sh',
       formValid: registerForm.formState.isValid ? 'Ha' : 'Yo\'q',
-      errors: Object.keys(registerForm.formState.errors).length > 0 ? 
+      errors: Object.keys(registerForm.formState.errors).length > 0 ?
         Object.keys(registerForm.formState.errors) : 'Xatolik yo\'q'
     });
   }, [watchedValues, registerForm.formState.isValid, registerForm.formState.errors]);
@@ -108,7 +108,7 @@ export default function Login() {
       // Generate auto username from email
       const autoUsername = data.email.split('@')[0] + '_' + Math.random().toString(36).substr(2, 4);
       console.log('👤 Avtomatik username yaratildi:', autoUsername);
-      
+
       const registerData = { ...data, username: autoUsername };
       console.log('📦 Serverga yuborilayotgan to\'liq ma\'lumotlar:', {
         ...registerData,
@@ -141,7 +141,7 @@ export default function Login() {
         statusText: error.statusText,
         stack: error.stack
       });
-      
+
       toast({
         title: "Error",
         description: error.message || "Registration failed. Please try again.",
@@ -298,26 +298,6 @@ export default function Login() {
                     )}
                   />
                 </div>
-
-                <FormField
-                  control={registerForm.control}
-                  name="birthDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>📅 Date of Birth</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="text"
-                          placeholder="MM-DD-YYYY (e.g., 01-15-1990)"
-                          {...field}
-                          data-testid="input-birth-date"
-                          className="h-12 text-base"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
                 <FormField
                   control={registerForm.control}
